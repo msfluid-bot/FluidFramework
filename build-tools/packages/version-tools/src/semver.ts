@@ -66,6 +66,11 @@ export function bumpRange(
     }
 }
 
+/**
+ * Detects the constraint type of a Fluid internal version range.
+ *
+ * @internal
+ */
 export function detectConstraintType(range: string): "minor" | "patch" {
     const minVer = semver.minVersion(range);
     if (minVer === null) {
