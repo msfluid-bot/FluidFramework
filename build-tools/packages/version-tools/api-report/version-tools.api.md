@@ -17,6 +17,9 @@ export function bumpVersionScheme(version: string | semver.SemVer | undefined, b
 export function detectVersionScheme(rangeOrVersion: string): VersionScheme;
 
 // @public
+export function fromInternalScheme(internalVersion: semver.SemVer | string): [publicVersion: semver.SemVer, internalVersion: semver.SemVer];
+
+// @public
 export function getVersionRange(version: semver.SemVer | string, maxAutomaticBump: "minor" | "patch" | "~" | "^"): string;
 
 // @public
@@ -27,6 +30,9 @@ export function isVersionBumpTypeExtended(type: VersionChangeType | string): typ
 
 // @public
 export function isVersionScheme(scheme: string | undefined): scheme is VersionScheme;
+
+// @public
+export function toInternalScheme(publicVersion: semver.SemVer | string, version: semver.SemVer | string): semver.SemVer;
 
 // @public
 export type VersionBumpType = "major" | "minor" | "patch";
