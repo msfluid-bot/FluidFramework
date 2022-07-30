@@ -4,7 +4,7 @@
  */
 
 import { Context, MonoRepo, Package } from "@fluidframework/build-tools";
-import { VersionScheme } from "@fluid-tools/version-tools";
+import { isVersionScheme, VersionScheme } from "@fluid-tools/version-tools";
 import chalk from "chalk";
 import { BaseCommand } from "../base";
 import {
@@ -14,11 +14,8 @@ import {
     versionSchemeFlag,
     packageSelectorFlag,
 } from "../flags";
-import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "../types";
-// eslint-disable-next-line import/no-internal-modules
-import { getPreReleaseDependencies, isReleased } from "../lib/packages";
-// eslint-disable-next-line import/no-internal-modules
-import { bumpReleaseGroup } from "../lib/bump";
+import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "../releaseGroups";
+import { bumpReleaseGroup, getPreReleaseDependencies, isReleased } from "../lib";
 
 /**
  * A base command that sets up common flags that most release-related commands should have.
@@ -70,7 +67,7 @@ export default class ReleaseCommand extends BaseReleaseCommand<typeof ReleaseCom
     // eslint-disable-next-line complexity
     async run(): Promise<void> {
         const flags = this.processedFlags;
-        const context = await this.getContext(flags.verbose);
+        const context = await this.getContext();
 
         const shouldCheckPolicy = flags.policyCheck && !flags.skipChecks;
         const shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
@@ -151,11 +148,15 @@ export default class ReleaseCommand extends BaseReleaseCommand<typeof ReleaseCom
                 ? context.repo.releaseGroups.get(releaseGroup)!
                 : context.fullPackageMap.get(flags.package!)!;
 
+            if (!isVersionScheme(flags.versionScheme)) {
+                this.error(`Not a versionScheme: ${flags.versionScheme}`);
+            }
+
             await this.checkAndQueueReleaseGroup(
                 context,
                 toBump,
                 shouldCommit,
-                flags.versionScheme!,
+                flags.versionScheme,
             );
             this.exit();
         }

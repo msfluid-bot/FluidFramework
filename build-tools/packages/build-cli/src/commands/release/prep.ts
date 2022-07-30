@@ -5,17 +5,13 @@
 
 import { strict as assert } from "assert";
 import { Context, FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
-import { adjustVersion, detectVersionScheme, isVersionScheme } from "@fluid-tools/version-tools";
+import { bumpVersionScheme, detectVersionScheme } from "@fluid-tools/version-tools";
 import chalk from "chalk";
 import { BaseReleaseCommand } from "../release";
 import { bumpTypeFlag, releaseGroupFlag } from "../../flags";
-import { isReleaseGroup, ReleaseGroup } from "../../types";
-// eslint-disable-next-line import/no-internal-modules
-import { npmCheckUpdates } from "../../lib/packages";
-// eslint-disable-next-line import/no-internal-modules
+import { isReleaseGroup, ReleaseGroup } from "../../releaseGroups";
+import { bumpReleaseGroup, npmCheckUpdates } from "../../lib";
 import { releaseBranchName, createBranchForBump } from "../../lib/branches";
-// eslint-disable-next-line import/no-internal-modules
-import { bumpReleaseGroup } from "../../lib/bump";
 
 const supportedBranches = new Set(["main", "next"]);
 
@@ -43,7 +39,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
 
     async run(): Promise<void> {
         const flags = this.processedFlags;
-        const context = await this.getContext(flags.verbose);
+        const context = await this.getContext();
         const shouldCheckPolicy = flags.policyCheck && !flags.skipChecks;
         const shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
         const shouldInstall = flags.install && !flags.skipChecks;
@@ -146,6 +142,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
      * Create release bump branch based on the repo state for either main or next branches, bump minor version
      * immediately and push it to `main` and the new release branch to remote.
      */
+    // eslint-disable-next-line max-params
     async createReleaseBranchesAndBump(
         context: Context,
         releaseGroup: ReleaseGroup,
@@ -158,7 +155,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
         // Create release branch
         const releaseVersion = context.repo.releaseGroups.get(releaseGroup)!.version;
         const scheme = detectVersionScheme(releaseVersion);
-        const newVersion = adjustVersion(releaseVersion, bumpType, scheme);
+        const newVersion = bumpVersionScheme(releaseVersion, bumpType, scheme);
         const releaseBranch = releaseBranchName(releaseGroup, releaseVersion);
 
         const commit = await context.gitRepo.getShaForBranch(releaseBranch);

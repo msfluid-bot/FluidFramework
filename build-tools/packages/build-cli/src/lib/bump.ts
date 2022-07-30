@@ -80,3 +80,35 @@ export async function bumpPackageDependencies(
 
     return changed;
 }
+
+/**
+ * Bumps a release group (or standalone package) by the bumpType.
+ *
+ * @param bumpType - The bump type.
+ * @param releaseGroupOrPackage - A release group repo or package to bump.
+ * @param scheme - The version scheme to use.
+ */
+export async function bumpReleaseGroup(
+    bumpType: VersionChangeType,
+    releaseGroupOrPackage: MonoRepo | Package,
+    scheme: VersionScheme,
+) {
+    const translatedVersion = isVersionBumpType(bumpType)
+        ? adjustVersion(releaseGroupOrPackage.version, bumpType, scheme)
+        : bumpType;
+    let cmd: string;
+    let workingDir: string;
+
+    if (releaseGroupOrPackage instanceof MonoRepo) {
+        workingDir = releaseGroupOrPackage.repoPath;
+        cmd = `npx lerna version ${translatedVersion.version} --no-push --no-git-tag-version -y && npm run build:genver`;
+    } else {
+        workingDir = releaseGroupOrPackage.directory;
+        cmd = `npm version ${translatedVersion.version}`;
+        if (releaseGroupOrPackage.getScript("build:genver") !== undefined) {
+            cmd += " && npm run build:genver";
+        }
+    }
+
+    return exec(cmd, workingDir, `Error bumping ${releaseGroupOrPackage}`);
+}
