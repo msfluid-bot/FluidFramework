@@ -5,8 +5,8 @@
 
 import { exec, MonoRepo, Package, VersionBag } from "@fluidframework/build-tools";
 import {
-    adjustVersion,
-    incRange,
+    bumpVersionScheme,
+    bumpRange,
     isVersionBumpType,
     isVersionBumpTypeExtended,
     VersionChangeType,
@@ -59,7 +59,7 @@ export async function bumpPackageDependencies(
             // eslint-disable-next-line unicorn/prefer-ternary
             if (isVersionBumpTypeExtended(depNewRangeOrBumpType)) {
                 // bump the current range string
-                newRangeString = incRange(verString, depNewRangeOrBumpType, prerelease);
+                newRangeString = bumpRange(verString, depNewRangeOrBumpType, prerelease);
             } else {
                 newRangeString = depNewRangeOrBumpType;
             }
@@ -94,7 +94,7 @@ export async function bumpReleaseGroup(
     scheme: VersionScheme,
 ) {
     const translatedVersion = isVersionBumpType(bumpType)
-        ? adjustVersion(releaseGroupOrPackage.version, bumpType, scheme)
+        ? bumpVersionScheme(releaseGroupOrPackage.version, bumpType, scheme)
         : bumpType;
     let cmd: string;
     let workingDir: string;

@@ -4,6 +4,6 @@
  */
 
 export * from "./bumpTypes";
-export { getVersionRange } from "./internalVersionScheme";
+export { getVersionRange, fromInternalScheme, toInternalScheme } from "./internalVersionScheme";
 export { bumpVersionScheme, detectVersionScheme, isVersionScheme, VersionScheme } from "./schemes";
 export { bumpRange } from "./semver";

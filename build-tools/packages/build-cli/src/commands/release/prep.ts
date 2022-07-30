@@ -10,8 +10,12 @@ import chalk from "chalk";
 import { BaseReleaseCommand } from "../release";
 import { bumpTypeFlag, releaseGroupFlag } from "../../flags";
 import { isReleaseGroup, ReleaseGroup } from "../../releaseGroups";
-import { bumpReleaseGroup, npmCheckUpdates } from "../../lib";
-import { releaseBranchName, createBranchForBump } from "../../lib/branches";
+import {
+    releaseBranchName,
+    createBranchForBump,
+    bumpReleaseGroup,
+    npmCheckUpdates,
+} from "../../lib";
 
 const supportedBranches = new Set(["main", "next"]);
 
