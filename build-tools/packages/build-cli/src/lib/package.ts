@@ -191,21 +191,25 @@ function getPackagesFromReleasePackages(
  * Returns true if a release group or package in the repo has been released.
  *
  * @param context - The context.
- * @param releaseGroupRepo - The release group to check.
+ * @param releaseGroup - The release group to check.
  * @returns True if the release group was released.
  */
 export async function isReleased(
     context: Context,
-    releaseGroupRepo: MonoRepo | Package,
+    releaseGroup: MonoRepo | Package | string,
 ): Promise<boolean> {
     await context.gitRepo.fetchTags();
 
     let tagName = "";
-    if (releaseGroupRepo instanceof MonoRepo) {
-        const kindLowerCase = releaseGroupRepo.kind.toLowerCase();
-        tagName = `${kindLowerCase}_v${releaseGroupRepo.version}`;
-    } else {
-        tagName = `${getPackageShortName(releaseGroupRepo.name)}_v${releaseGroupRepo.version}`;
+    if (typeof releaseGroup === "string" && isReleaseGroup(releaseGroup)) {
+        releaseGroup = context.repo.releaseGroups.get(releaseGroup)!;
+    }
+
+    if (releaseGroup instanceof MonoRepo) {
+        const kindLowerCase = releaseGroup.kind.toLowerCase();
+        tagName = `${kindLowerCase}_v${releaseGroup.version}`;
+    } else if (typeof releaseGroup !== "string") {
+        tagName = `${getPackageShortName(releaseGroup.name)}_v${releaseGroup.version}`;
     }
 
     const rawTag = await context.gitRepo.getTags(tagName);

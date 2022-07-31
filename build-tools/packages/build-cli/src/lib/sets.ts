@@ -13,7 +13,7 @@
  *
  * Implementation from {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set}.
  */
- export function difference<T>(setA: Set<T>, setB: Set<T>) {
+export function difference<T>(setA: Set<T>, setB: Set<T>) {
     const _difference = new Set(setA);
     for (const elem of setB) {
         _difference.delete(elem);

@@ -53,6 +53,7 @@
     "@oclif/test": "^2",
     "chalk": "^2.4.2",
     "inquirer": "^9.0.0",
+    "jssm": "^5.79.18",
     "npm-check-updates": "^16.0.0",
     "semver": "^7.3.7",
     "table": "^6.8.0"
