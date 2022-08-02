@@ -13,23 +13,23 @@ import {
 import * as semver from "semver";
 import { ReleaseGroup } from "../releaseGroups";
 
+// export async function createBranchForBump(
+//     context: Context,
+//     releaseGroup: ReleaseGroup,
+//     newVersion: string,
+//     ): Promise<string> {
+//         const bumpBranch = `bump_${releaseGroup.toLowerCase()}_${newVersion}_${Date.now()}`;
+//         await context.createBranch(bumpBranch);
+//         return bumpBranch;
+//     }
+
 /**
  * Creates a branch with changes for a release group bump.
  * @param context -
  * @param releaseGroup -
- * @param newVersion -
- * @returns
+ * @param bumpType -
+ * @returns The name of the newly creted branch.
  */
-export async function createBranchForBump(
-    context: Context,
-    releaseGroup: ReleaseGroup,
-    newVersion: string,
-): Promise<string> {
-    const bumpBranch = `bump_${releaseGroup.toLowerCase()}_${newVersion}_${Date.now()}`;
-    await context.createBranch(bumpBranch);
-    return bumpBranch;
-}
-
 export async function createBumpBranch(
     context: Context,
     releaseGroup: ReleaseGroup,

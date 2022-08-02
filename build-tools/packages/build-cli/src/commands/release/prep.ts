@@ -8,14 +8,9 @@ import { Context, FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
 import { bumpVersionScheme, detectVersionScheme } from "@fluid-tools/version-tools";
 import chalk from "chalk";
 import { BaseReleaseCommand } from "../release";
-import { bumpTypeFlag, releaseGroupFlag } from "../../flags";
+import { bumpTypeExtendedFlag, releaseGroupFlag } from "../../flags";
 import { isReleaseGroup, ReleaseGroup } from "../../releaseGroups";
-import {
-    releaseBranchName,
-    createBranchForBump,
-    bumpReleaseGroup,
-    npmCheckUpdates,
-} from "../../lib";
+import { releaseBranchName, bumpReleaseGroup, npmCheckUpdates, createBumpBranch } from "../../lib";
 
 const supportedBranches = new Set(["main", "next"]);
 
@@ -32,7 +27,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
         releaseGroup: releaseGroupFlag({
             required: true,
         }),
-        bumpType: bumpTypeFlag({
+        bumpType: bumpTypeExtendedFlag({
             options: ["major", "minor"],
             required: true,
         }),
@@ -50,24 +45,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
         const shouldCommit = flags.commit && !flags.skipChecks;
         const shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
 
-        let releaseGroup: ReleaseGroup;
-
-        if (isReleaseGroup(flags.releaseGroup)) {
-            releaseGroup = flags.releaseGroup;
-        } else {
-            this.error(`${flags.releaseGroup} is not a valid release group.`);
-        }
-
-        assert(
-            flags.bumpType === "major" || flags.bumpType === "minor",
-            "Type must be major or minor.",
-        );
-        // assert(isVersionScheme(flags.versionScheme));
-
-        if (flags.bumpType === "major") {
-            // TODO: Implement this
-            this.error(`Major bumps not yet implemented.`);
-        }
+        let releaseGroup: ReleaseGroup = flags.releaseGroup;
 
         // TODO: run policy check before releasing a version.
         if (shouldCheckPolicy) {
@@ -131,6 +109,8 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
             this.log(chalk.green(`No prerelease dependencies found.`));
         }
 
+        assert(flags.bumpType === "major" || flags.bumpType === "minor");
+
         await this.createReleaseBranchesAndBump(
             context,
             releaseGroup,
@@ -176,7 +156,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
         }
 
         console.log(`Release bump: bumping ${chalk.blue(bumpType)} version to ${newVersion}`);
-        const bumpBranch = await createBranchForBump(context, releaseGroup, newVersion.version);
+        const bumpBranch = await createBumpBranch(context, releaseGroup, bumpType);
         const bumpResults = await bumpReleaseGroup(bumpType, rgMonoRepo, scheme);
         this.verbose(bumpResults);
 

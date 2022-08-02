@@ -3,12 +3,9 @@
  * Licensed under the MIT License.
  */
 
-import { bumpRange, isVersionBumpTypeExtended } from "@fluid-tools/version-tools";
 import {
     FluidRepo,
     isMonoRepoKind,
-    MonoRepo,
-    Package,
     VersionBag,
 } from "@fluidframework/build-tools";
 import { Flags } from "@oclif/core";
@@ -17,7 +14,7 @@ import { ArgInput } from "@oclif/core/lib/interfaces";
 import chalk from "chalk";
 import * as semver from "semver";
 import { BaseCommand } from "../../base";
-import { bumpTypeFlag, releaseGroupFlag, semverRangeFlag } from "../../flags";
+import { bumpTypeExtendedFlag, releaseGroupFlag, semverRangeFlag } from "../../flags";
 import { bumpPackageDependencies, PackageWithRangeSpec } from "../../lib";
 
 /**
@@ -47,7 +44,7 @@ export default class DepsCommand extends BaseCommand<typeof DepsCommand.flags> {
             char: "n",
             exclusive: ["bumpType"],
         }),
-        bumpType: bumpTypeFlag({
+        bumpType: bumpTypeExtendedFlag({
             char: "t",
             description: "Bump the current version of the dependency according to this bump type.",
             exclusive: ["version"],

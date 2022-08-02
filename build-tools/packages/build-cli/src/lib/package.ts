@@ -202,6 +202,7 @@ export async function isReleased(
 
     let tagName = "";
     if (typeof releaseGroup === "string" && isReleaseGroup(releaseGroup)) {
+        // eslint-disable-next-line no-param-reassign
         releaseGroup = context.repo.releaseGroups.get(releaseGroup)!;
     }
 

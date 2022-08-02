@@ -3,6 +3,11 @@
  * Licensed under the MIT License.
  */
 
-export { releaseBranchName, createBranchForBump, createBumpBranch } from "./branches";
+export { createBumpBranch, releaseBranchName } from "./branches";
 export { bumpPackageDependencies, bumpReleaseGroup, PackageWithRangeSpec } from "./bump";
-export { getPreReleaseDependencies, isReleased, npmCheckUpdates } from "./package";
+export {
+    getPreReleaseDependencies,
+    isReleased,
+    npmCheckUpdates,
+    PreReleaseDependencies,
+} from "./package";
