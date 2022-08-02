@@ -3,11 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import {
-    FluidRepo,
-    isMonoRepoKind,
-    VersionBag,
-} from "@fluidframework/build-tools";
+import { FluidRepo, isMonoRepoKind, VersionBag } from "@fluidframework/build-tools";
 import { Flags } from "@oclif/core";
 // eslint-disable-next-line import/no-internal-modules
 import { ArgInput } from "@oclif/core/lib/interfaces";

@@ -81,6 +81,7 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
     async handleState(state: string): Promise<boolean> {
         const context = await this.getContext();
         let localHandled = true;
+        // let superHandled = false;
 
         // First handle any states that we know about. If not handled here, we pass it up to the parent handler.
         switch (state) {
@@ -105,7 +106,8 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
             case "PromptToPR": {
                 this.logHr();
                 this.log(
-                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${context.originalBranchName
+                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${
+                        context.originalBranchName
                     } branch.`,
                 );
                 this.log(
@@ -158,9 +160,13 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
             }
         }
 
+        if (localHandled) {
+            return true;
+        }
+
         const superHandled = await super.handleState(state);
-        assert((localHandled && superHandled) !== true, `State handled in multiple places: ${state}`);
-        return superHandled || localHandled;
+        // assert((localHandled && superHandled) !== true, `State handled in multiple places: ${state}`);
+        return superHandled;
     }
 
     async run(): Promise<void> {

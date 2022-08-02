@@ -19,7 +19,14 @@ import { rootPathFlag } from "./flags";
 import { createBumpBranch, getPreReleaseDependencies, isReleased } from "./lib";
 import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "./releaseGroups";
 import { StateHandler } from "./machines";
-import { ChecksBranchName, ChecksBranchUpdate, CheckSkipper, ChecksPolicy, ChecksShouldCommit, ChecksValidReleaseGroup } from "./checks";
+import {
+    ChecksBranchName,
+    ChecksBranchUpdate,
+    CheckSkipper,
+    ChecksPolicy,
+    ChecksShouldCommit,
+    ChecksValidReleaseGroup,
+} from "./checks";
 
 // This is needed to get type safety working in derived classes.
 // https://github.com/oclif/oclif.github.io/pull/142
@@ -165,7 +172,8 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
 
 export abstract class StateMachineCommand<T extends typeof StateMachineCommand.flags>
     extends BaseCommand<T>
-    implements StateHandler {
+    implements StateHandler
+{
     static flags = {
         ...BaseCommand.flags,
     };
@@ -230,7 +238,7 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
         do {
             const state = this.machine.state();
             // eslint-disable-next-line no-await-in-loop
-            const handled = await this.handleState(state)
+            const handled = await this.handleState(state);
             if (!handled) {
                 this.error(`Unhandled state: ${state}`);
             }
@@ -239,14 +247,16 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
     }
 }
 
-export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags> extends StateMachineCommand<T>
+export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags>
+    extends StateMachineCommand<T>
     implements
-    ChecksValidReleaseGroup,
-    ChecksPolicy,
-    ChecksBranchName,
-    ChecksBranchUpdate,
-    ChecksShouldCommit,
-    CheckSkipper {
+        ChecksValidReleaseGroup,
+        ChecksPolicy,
+        ChecksBranchName,
+        ChecksBranchUpdate,
+        ChecksShouldCommit,
+        CheckSkipper
+{
     abstract get shouldSkipChecks(): boolean;
     abstract set shouldSkipChecks(v: boolean);
     abstract get shouldCheckBranch(): boolean;
@@ -268,7 +278,6 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
         return `Branch name '${this._context?.originalBranchName}' isn't expected.`;
     }
 
-
     // eslint-disable-next-line complexity
     async handleState(state: string): Promise<boolean> {
         const context = await this.getContext();
@@ -276,11 +285,6 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
 
         // First handle any states that we know about. If not handled here, we pass it up to the parent handler.
         switch (state) {
-            case "Failed": {
-                this.verbose("Failed state!");
-                break;
-            }
-
             case "Init": {
                 if (this.shouldSkipChecks) {
                     this.machine.action("skipChecks");
@@ -432,8 +436,10 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
         }
 
         const superHandled = await super.handleState(state);
-        assert((localHandled && superHandled) !== true, `State handled in multiple places: ${state}`);
+        assert(
+            (localHandled && superHandled) !== true,
+            `State handled in multiple places: ${state}`,
+        );
         return superHandled || localHandled;
     }
 }
-

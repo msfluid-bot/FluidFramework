@@ -99,9 +99,13 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
             }
         }
 
+        if (localHandled) {
+            return true;
+        }
+
         const superHandled = await super.handleState(state);
-        assert((localHandled && superHandled) !== true, `State handled in multiple places: ${state}`);
-        return superHandled || localHandled;
+        // assert((localHandled && superHandled) !== true, `State handled in multiple places: ${state}`);
+        return superHandled;
     }
 
     async run(): Promise<void> {
