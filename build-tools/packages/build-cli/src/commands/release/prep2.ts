@@ -61,7 +61,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
     }
 
     get checkBranchNameErrorMessage(): string {
-        return `Release prep should only be done on 'main' or 'next' branches, but current branch is '${this._context?.originalBranchName}'.`;
+        return `Release prep should only be done on 'main', 'next', or 'lts' branches, but current branch is '${this._context?.originalBranchName}'.`;
     }
 
     async handleState(state: string): Promise<boolean> {
@@ -69,12 +69,9 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
         let localHandled = true;
 
         switch (state) {
-            case "PromptToPR": {
-                this.logHr();
+            case "PromptToCommitBump": {
                 this.log(
-                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${
-                        context.originalBranchName
-                    } branch.`,
+                    `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
                 );
                 this.log(
                     `\nAfter the PR is merged, then the release of ${this.releaseGroup} is complete!`,
@@ -83,7 +80,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                 break;
             }
 
-            case "PromptToCommit": {
+            case "PromptToCommitDeps": {
                 this.log(
                     `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
                 );
@@ -118,7 +115,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                 break;
             }
 
-            case "DoReleaseGroupBump": {
+            case "DoReleaseGroupBumpMinor": {
                 const rgRepo = context.repo.releaseGroups.get(this.releaseGroup!)!;
                 const scheme = detectVersionScheme(this.releaseVersion!);
                 const newVersion = bumpVersionScheme(this.releaseVersion, this.bumpType, scheme);
@@ -165,6 +162,24 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                 this.logIndent(
                     `${this.config.bin} release -g ${this.releaseGroup} -t ${this.bumpType}`,
                 );
+                this.exit();
+                break;
+            }
+
+            case "PromptToPRDeps": {
+                const scheme = detectVersionScheme(this.releaseVersion!)
+                const cmd = `${this.config.bin} ${this.id} -g ${this.releaseGroup} -S ${scheme}`;
+
+                this.logHr();
+                this.log(
+                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${
+                        context.originalBranchName
+                    } branch.`,
+                );
+                this.log(
+                    `\nAfter the PR is merged, run the following command to continue the release:`,
+                );
+                this.logIndent(chalk.whiteBright(`\n${cmd}`));
                 this.exit();
                 break;
             }

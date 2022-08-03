@@ -162,9 +162,6 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
                 this.log(
                     `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
                 );
-                this.log(
-                    `\nAfter the PR is merged, then the release of ${this.releaseGroup} is complete!`,
-                );
                 this.exit();
                 break;
             }

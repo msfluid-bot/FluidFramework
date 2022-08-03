@@ -23,7 +23,7 @@ import {
     ChecksValidReleaseGroup,
 } from "./checks";
 import { checkFlags, rootPathFlag, skipCheckFlag } from "./flags";
-import { createBumpBranch, getPreReleaseDependencies, isReleased } from "./lib";
+import { createBumpBranch, getPreReleaseDependencies, isReleased, releaseBranchName } from "./lib";
 import { StateHandler } from "./machines/machines";
 import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "./releaseGroups";
 
@@ -423,6 +423,17 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 }
 
                 break;
+            }
+
+            case "CheckReleaseBranchDoesNotExist": {
+                const releaseBranch = releaseBranchName(this.releaseGroup!, this.releaseVersion!);
+
+                const commit = await context.gitRepo.getShaForBranch(releaseBranch);
+                if (commit !== undefined) {
+                    this.machine.action("failure");
+                    this.logError(`${releaseBranch} already exists`);
+                }
+                this.machine.action("success");
             }
 
             case "CheckIfCurrentReleaseGroupIsReleased": {
