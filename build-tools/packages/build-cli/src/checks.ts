@@ -14,7 +14,8 @@ export interface CheckSkipper {
 // }
 
 export interface ChecksValidReleaseGroup {
-    readonly releaseGroup: ReleaseGroup | ReleasePackage;
+    readonly releaseGroup: ReleaseGroup | ReleasePackage | undefined;
+    releaseVersion: string | undefined;
 }
 
 export interface ChecksPolicy extends CheckSkipper {
@@ -34,3 +35,7 @@ export interface ChecksBranchUpdate extends CheckSkipper {
 export interface ChecksShouldCommit extends CheckSkipper {
     shouldCommit: boolean;
 }
+
+// export interface ChecksReleaseBranch {
+//     releaseBranchName: string;
+// }

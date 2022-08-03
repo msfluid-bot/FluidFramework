@@ -100,8 +100,8 @@ Init 'success'
 => CheckReleaseBranch 'success'
 => CheckInstallBuildTools 'success'
 => DoReleaseGroupBump 'success'
-=> CheckShouldCommit 'success'
-=> PromptToPR;
+=> CheckShouldCommitBump 'success'
+=> PromptToPRBump;
 
 Init 'skipChecks'
 => CheckForPrereleaseDependencies;
@@ -117,13 +117,15 @@ CheckInstallBuildTools
 
 CheckForPrereleaseDependencies 'hasDependencies'
 => DoBumpPrereleaseDependencies 'success'
-=> CheckShouldCommit;
+=> CheckShouldCommitDeps 'success'
+=> PromptToPRDeps;
 
 [DoBumpPrereleaseDependencies
 DoReleaseGroupBump
 ] 'failure' => Failed;
 
-[CheckShouldCommit] 'failure'
+[CheckShouldCommitBump
+CheckShouldCommitDeps] 'failure'
 => PromptToCommit;
 `;
 
@@ -134,17 +136,35 @@ enum _PrepReleaseMachineActions {
     hasDependencies = "hasDependencies",
 }
 export class PrepReleaseMachineActions extends extend<
-    typeof _ReleaseMachineActions,
-    _ReleaseMachineActions
->(_ReleaseMachineActions) {}
+    typeof _PrepReleaseMachineActions,
+    _PrepReleaseMachineActions
+>(_PrepReleaseMachineActions) {}
 
 enum _PrepReleaseMachineStates {
     Init = "Init",
     Failed = "Failed",
+    CheckReleaseBranch = "CheckReleaseBranch",
+    CheckValidReleaseGroup = "CheckValidReleaseGroup",
+    CheckPolicy = "CheckPolicy",
+    CheckBranchName = "CheckBranchName",
+    CheckHasRemote = "CheckHasRemote",
+    CheckBranchUpToDate = "CheckBranchUpToDate",
+    CheckForPrereleaseDependencies = "CheckForPrereleaseDependencies",
+    CheckIfCurrentReleaseGroupIsReleased = "CheckIfCurrentReleaseGroupIsReleased",
+    CheckShouldCommitBump = "CheckShouldCommitBump",
+    CheckShouldCommitDeps = "CheckShouldCommitDeps",
+    DoPostReleasePatchBump = "DoPostReleasePatchBump",
+    DoBumpPrereleaseDependencies = "DoBumpPrereleaseDependencies",
+    PromptToPR = "PromptToPR",
+    PromptToCommit = "PromptToCommit",
+    PromptToRelease = "PromptToRelease",
+    CheckInstallBuildTools = "CheckInstallBuildTools",
+    DoReleaseGroupBump = "DoReleaseGroupBump",
+
 }
 export class PrepReleaseMachineStates extends extend<
-    typeof _ReleaseMachineStates,
-    _ReleaseMachineStates
->(_ReleaseMachineStates) {}
+    typeof _PrepReleaseMachineStates,
+    _PrepReleaseMachineStates
+>(_PrepReleaseMachineStates) {}
 
 export const allMachines = [ReleaseMachine, PrepReleaseMachine];

@@ -24,11 +24,11 @@ import { ReleaseGroup } from "../releaseGroups";
 //     }
 
 /**
- * Creates a branch with changes for a release group bump.
+ * Creates a branch with changes for a release group bump. Does not commit!
  * @param context -
  * @param releaseGroup -
  * @param bumpType -
- * @returns The name of the newly creted branch.
+ * @returns The name of the newly created branch.
  */
 export async function createBumpBranch(
     context: Context,
@@ -41,7 +41,15 @@ export async function createBumpBranch(
     return name;
 }
 
-function bumpBranchName(releaseGroup: ReleaseGroup, bumpType: VersionBumpType, version: string) {
+
+/**
+ * Generates a consistent branch name from a release group, bump type, and version.
+ * @param releaseGroup -
+ * @param bumpType -
+ * @param version -
+ * @returns The branch name.
+ */
+export function bumpBranchName(releaseGroup: ReleaseGroup, bumpType: VersionBumpType, version: string) {
     const scheme = detectVersionScheme(version);
     const newVersion = bumpVersionScheme(version, bumpType, scheme);
     const branchName = `bump_${releaseGroup.toLowerCase()}_${bumpType}_${newVersion}`;

@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-export { createBumpBranch, releaseBranchName } from "./branches";
+export { bumpBranchName, createBumpBranch, releaseBranchName } from "./branches";
 export { bumpPackageDependencies, bumpReleaseGroup, PackageWithRangeSpec } from "./bump";
 export {
     getPreReleaseDependencies,

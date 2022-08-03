@@ -13,6 +13,7 @@ import {
     VersionScheme,
 } from "@fluid-tools/version-tools";
 import * as semver from "semver";
+import { ReleaseGroup } from "../releaseGroups";
 
 /** A mapping of {@link Package} to a version range string or a bump type. This interface is used for convenience. */
 export interface PackageWithRangeSpec {

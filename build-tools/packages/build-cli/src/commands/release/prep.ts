@@ -136,7 +136,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
     ) {
         this.log(`Preparing for a ${bumpType} release of the ${releaseGroup} release group.`);
 
-        // Create release branch
+        // // Create release branch
         const releaseVersion = context.repo.releaseGroups.get(releaseGroup)!.version;
         const scheme = detectVersionScheme(releaseVersion);
         const newVersion = bumpVersionScheme(releaseVersion, bumpType, scheme);
@@ -146,7 +146,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
         if (commit !== undefined) {
             this.error(`${releaseBranch} already exists`);
         }
-
+///////////////
         // Make sure everything is installed (so that we can do build:genver)
         const rgMonoRepo = context.repo.releaseGroups.get(MonoRepoKind.BuildTools)!;
         this.log(`Installing build-tools so we can run build:genver`);

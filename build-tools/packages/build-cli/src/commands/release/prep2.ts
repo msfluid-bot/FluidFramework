@@ -5,7 +5,7 @@
 
 import { strict as assert } from "assert";
 import chalk from "chalk";
-import { VersionBumpType } from "@fluid-tools/version-tools";
+import { bumpVersionScheme, detectVersionScheme, VersionBumpType } from "@fluid-tools/version-tools";
 import {
     bumpTypeFlag,
     checkFlags,
@@ -16,7 +16,9 @@ import {
 } from "../../flags";
 import { CommandWithChecks, StateMachineCommand } from "../../base";
 import { PrepReleaseMachine } from "../../machines";
-import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "../../releaseGroups";
+import { bumpBranchName, bumpReleaseGroup, createBumpBranch, releaseBranchName } from "../../lib";
+import { isReleaseGroup, ReleaseGroup } from "../../releaseGroups";
+import { FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
 
 /**
  * Releases a release group recursively.
@@ -44,14 +46,13 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
             options: ["major", "minor"],
             required: true,
         }),
-        skipChecks: skipCheckFlag,
-        ...checkFlags,
-        ...StateMachineCommand.flags,
+        ...CommandWithChecks.flags,
     };
 
     machine = PrepReleaseMachine;
 
-    releaseGroup: ReleaseGroup | ReleasePackage = "";
+    releaseGroup: ReleaseGroup | undefined;
+    releaseVersion: string | undefined;
     shouldSkipChecks = false;
     shouldCheckPolicy = true;
     shouldCheckBranch = true;
@@ -75,8 +76,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
             case "PromptToPR": {
                 this.logHr();
                 this.log(
-                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${
-                        context.originalBranchName
+                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${context.originalBranchName
                     } branch.`,
                 );
                 this.log(
@@ -94,6 +94,75 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                 break;
             }
 
+            case "CheckReleaseBranch": {
+                // Check release branch
+                const releaseBranch = releaseBranchName(this.releaseGroup!, this.releaseVersion!);
+
+                const commit = await context.gitRepo.getShaForBranch(releaseBranch);
+                if (commit !== undefined) {
+                    this.logError(`${releaseBranch} already exists`);
+                    this.machine.action("failure");
+                }
+                this.machine.action("success");
+                break;
+            }
+
+            case "CheckInstallBuildTools": {
+                // Make sure everything is installed (so that we can do build:genver)
+                const buildToolsMonoRepo = context.repo.releaseGroups.get(MonoRepoKind.BuildTools)!;
+                this.log(`Installing build-tools so we can run build:genver`);
+                const ret = await buildToolsMonoRepo.install();
+                if (ret.error) {
+                    this.logError("Install failed.");
+                    this.machine.action("failure");
+                }
+
+                this.machine.action("success");
+                break;
+            }
+
+            case "DoReleaseGroupBump": {
+                const rgRepo = context.repo.releaseGroups.get(this.releaseGroup!)!;
+                const scheme = detectVersionScheme(this.releaseVersion!);
+                const newVersion = bumpVersionScheme(this.releaseVersion, this.bumpType, scheme);
+
+                this.log(`Release bump: bumping ${chalk.blue(this.bumpType)} version to ${newVersion}`);
+                const bumpResults = await bumpReleaseGroup(this.bumpType, rgRepo, scheme);
+                this.verbose(`Raw bump results:`);
+                this.verbose(bumpResults);
+
+                if (!(await FluidRepo.ensureInstalled(rgRepo.packages, false))) {
+                    this.logError("Install failed.");
+                    this.machine.action("failure");
+
+                }
+                this.machine.action("success");
+                break;
+            }
+
+            case "PromptToPRBump": {
+                const bumpBranch = bumpBranchName(this.releaseGroup!, this.bumpType, this.releaseVersion!);
+                this.logHr();
+                this.log(
+                    `\n* Please push and create a PR for branch ${bumpBranch} targeting ${context.originalBranchName}.`,
+                );
+
+                if (context.originalBranchName === "main") {
+                    const releaseBranch = releaseBranchName(this.releaseGroup!, this.releaseVersion!);
+                    this.log(
+                        `\n* After PR is merged, create branch ${releaseBranch} one commit before the merged PR and push to the repo.`,
+                    );
+                }
+
+                this.log(
+                    `\n* Once the release branch has been created, switch to it and use the following command to release the ${this.releaseGroup} release group:\n`,
+                );
+                this.logIndent(`${this.config.bin} release -g ${this.releaseGroup} -t ${this.bumpType}`);
+                this.exit();
+                break;
+            }
+
+
             default: {
                 localHandled = false;
             }
@@ -104,19 +173,21 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
         }
 
         const superHandled = await super.handleState(state);
-        // assert((localHandled && superHandled) !== true, `State handled in multiple places: ${state}`);
         return superHandled;
     }
 
     async run(): Promise<void> {
+        const context = await this.getContext();
         const flags = this.processedFlags;
 
-        this.releaseGroup = flags.releaseGroup!;
+        this.releaseGroup = flags.releaseGroup;
+        this.releaseVersion = context.repo.releaseGroups.get(this.releaseGroup)!.version;
+
+        this.shouldSkipChecks = flags.skipChecks;
         this.shouldCheckPolicy = flags.policyCheck && !flags.skipChecks;
         this.shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
         this.shouldCommit = flags.commit && !flags.skipChecks;
         this.shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
-        this.bumpType = flags.bumpType!;
 
         const shouldInstall = flags.install && !flags.skipChecks;
 
