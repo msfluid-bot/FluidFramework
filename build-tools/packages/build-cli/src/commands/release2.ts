@@ -4,7 +4,11 @@
  */
 
 import { strict as assert } from "assert";
-import { bumpVersionScheme, detectVersionScheme, VersionBumpType } from "@fluid-tools/version-tools";
+import {
+    bumpVersionScheme,
+    detectVersionScheme,
+    VersionBumpType,
+} from "@fluid-tools/version-tools";
 import chalk from "chalk";
 import { CommandWithChecks, StateMachineCommand } from "../base";
 import {
@@ -15,7 +19,7 @@ import {
     versionSchemeFlag,
 } from "../flags";
 import { bumpReleaseGroup, createBumpBranch } from "../lib";
-import { ReleaseMachine } from "../machines";
+import { ReleaseMachine } from "../machines/machines";
 import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "../releaseGroups";
 
 /**
@@ -50,7 +54,7 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
         ...CommandWithChecks.flags,
     };
 
-    machine = ReleaseMachine;
+    machine = ReleaseMachine.machine;
 
     releaseGroup: ReleaseGroup | undefined;
     releaseVersion: string | undefined;
@@ -69,12 +73,7 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
     }
 
     get checkBranchNameErrorMessage(): string {
-        return `Patch release should only be done on 'release/*' branches, but current branch is '${this._context?.originalBranchName}'`;
-    }
-
-    async init(): Promise<void> {
-        await super.init();
-        // await this.initMachineHooks();
+        return `Patch release should only be done on 'release/*' branches, but current branch is '${this._context?.originalBranchName}. You can skip this check with --no-branchCheck.'`;
     }
 
     async handleState(state: string): Promise<boolean> {
@@ -99,7 +98,7 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
             //     break;
             // }
 
-            case "DoPostReleasePatchBump": {
+            case "DoReleaseGroupBumpPatch": {
                 if (!isReleaseGroup(this.releaseGroup)) {
                     this.logError(`Expected a release group: ${this.releaseGroup}`);
                     this.machine.action("failure");
@@ -117,7 +116,7 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
                 break;
             }
 
-            case "PromptToPR": {
+            case "PromptToPRBump": {
                 this.logHr();
                 this.log(
                     `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${
@@ -131,7 +130,35 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
                 break;
             }
 
-            case "PromptToCommit": {
+            case "PromptToPRDeps": {
+                const cmd = `${this.config.bin} ${this.id} -g ${this.releaseGroup} -S ${this.processedFlags.versionScheme}`;
+
+                this.logHr();
+                this.log(
+                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${
+                        context.originalBranchName
+                    } branch.`,
+                );
+                this.log(
+                    `\nAfter the PR is merged, run the following command to continue the release:`,
+                );
+                this.logIndent(chalk.whiteBright(`\n${cmd}`));
+                this.exit();
+                break;
+            }
+
+            case "PromptToCommitBump": {
+                this.log(
+                    `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
+                );
+                this.log(
+                    `\nAfter the PR is merged, then the release of ${this.releaseGroup} is complete!`,
+                );
+                this.exit();
+                break;
+            }
+
+            case "PromptToCommitDeps": {
                 this.log(
                     `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
                 );
@@ -143,12 +170,7 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
             }
 
             case "PromptToRelease": {
-                let cmd = `${this.config.bin} ${this.id}`;
-                cmd += isReleaseGroup(this.releaseGroup)
-                    ? ` -g ${this.releaseGroup}`
-                    : ` -p ${this.releaseGroup}`;
-
-                cmd += ` -S ${this.processedFlags.versionScheme}`;
+                const cmd = `${this.config.bin} ${this.id} -g ${this.releaseGroup} -S ${this.processedFlags.versionScheme}`;
 
                 this.logHr();
                 this.log(
@@ -182,21 +204,14 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
         return superHandled;
     }
 
-    async run(): Promise<void> {
+    async init() {
+        await super.init();
         const context = await this.getContext();
-        const flags = this.processedFlags;
-
-        this.releaseGroup = flags.releaseGroup;
+        this.releaseGroup = this.processedFlags.releaseGroup!;
         this.releaseVersion = context.repo.releaseGroups.get(this.releaseGroup!)!.version;
+    }
 
-        this.shouldSkipChecks = flags.skipChecks;
-        this.shouldCheckPolicy = flags.policyCheck && !flags.skipChecks;
-        this.shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
-        this.shouldCommit = flags.commit && !flags.skipChecks;
-        this.shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
-
-        const shouldInstall = flags.install && !flags.skipChecks;
-
+    async run(): Promise<void> {
         await this.stateLoop();
     }
 }

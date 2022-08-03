@@ -3,21 +3,17 @@
  * Licensed under the MIT License.
  */
 
-import { strict as assert } from "assert";
 import chalk from "chalk";
-import { bumpVersionScheme, detectVersionScheme, VersionBumpType } from "@fluid-tools/version-tools";
 import {
-    bumpTypeFlag,
-    checkFlags,
-    packageSelectorFlag,
-    releaseGroupFlag,
-    skipCheckFlag,
-    versionSchemeFlag,
-} from "../../flags";
-import { CommandWithChecks, StateMachineCommand } from "../../base";
-import { PrepReleaseMachine } from "../../machines";
-import { bumpBranchName, bumpReleaseGroup, createBumpBranch, releaseBranchName } from "../../lib";
-import { isReleaseGroup, ReleaseGroup } from "../../releaseGroups";
+    bumpVersionScheme,
+    detectVersionScheme,
+    VersionBumpType,
+} from "@fluid-tools/version-tools";
+import { bumpTypeFlag, releaseGroupFlag } from "../../flags";
+import { CommandWithChecks } from "../../base";
+import { PrepReleaseMachine } from "../../machines/machines";
+import { bumpBranchName, bumpReleaseGroup, releaseBranchName } from "../../lib";
+import { ReleaseGroup } from "../../releaseGroups";
 import { FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
 
 /**
@@ -49,7 +45,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
         ...CommandWithChecks.flags,
     };
 
-    machine = PrepReleaseMachine;
+    machine = PrepReleaseMachine.machine;
 
     releaseGroup: ReleaseGroup | undefined;
     releaseVersion: string | undefined;
@@ -76,7 +72,8 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
             case "PromptToPR": {
                 this.logHr();
                 this.log(
-                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${context.originalBranchName
+                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${
+                        context.originalBranchName
                     } branch.`,
                 );
                 this.log(
@@ -126,7 +123,9 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                 const scheme = detectVersionScheme(this.releaseVersion!);
                 const newVersion = bumpVersionScheme(this.releaseVersion, this.bumpType, scheme);
 
-                this.log(`Release bump: bumping ${chalk.blue(this.bumpType)} version to ${newVersion}`);
+                this.log(
+                    `Release bump: bumping ${chalk.blue(this.bumpType)} version to ${newVersion}`,
+                );
                 const bumpResults = await bumpReleaseGroup(this.bumpType, rgRepo, scheme);
                 this.verbose(`Raw bump results:`);
                 this.verbose(bumpResults);
@@ -134,21 +133,27 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                 if (!(await FluidRepo.ensureInstalled(rgRepo.packages, false))) {
                     this.logError("Install failed.");
                     this.machine.action("failure");
-
                 }
                 this.machine.action("success");
                 break;
             }
 
             case "PromptToPRBump": {
-                const bumpBranch = bumpBranchName(this.releaseGroup!, this.bumpType, this.releaseVersion!);
+                const bumpBranch = bumpBranchName(
+                    this.releaseGroup!,
+                    this.bumpType,
+                    this.releaseVersion!,
+                );
                 this.logHr();
                 this.log(
                     `\n* Please push and create a PR for branch ${bumpBranch} targeting ${context.originalBranchName}.`,
                 );
 
                 if (context.originalBranchName === "main") {
-                    const releaseBranch = releaseBranchName(this.releaseGroup!, this.releaseVersion!);
+                    const releaseBranch = releaseBranchName(
+                        this.releaseGroup!,
+                        this.releaseVersion!,
+                    );
                     this.log(
                         `\n* After PR is merged, create branch ${releaseBranch} one commit before the merged PR and push to the repo.`,
                     );
@@ -157,11 +162,12 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                 this.log(
                     `\n* Once the release branch has been created, switch to it and use the following command to release the ${this.releaseGroup} release group:\n`,
                 );
-                this.logIndent(`${this.config.bin} release -g ${this.releaseGroup} -t ${this.bumpType}`);
+                this.logIndent(
+                    `${this.config.bin} release -g ${this.releaseGroup} -t ${this.bumpType}`,
+                );
                 this.exit();
                 break;
             }
-
 
             default: {
                 localHandled = false;

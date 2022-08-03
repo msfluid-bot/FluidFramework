@@ -41,7 +41,6 @@ export async function createBumpBranch(
     return name;
 }
 
-
 /**
  * Generates a consistent branch name from a release group, bump type, and version.
  * @param releaseGroup -
@@ -49,7 +48,11 @@ export async function createBumpBranch(
  * @param version -
  * @returns The branch name.
  */
-export function bumpBranchName(releaseGroup: ReleaseGroup, bumpType: VersionBumpType, version: string) {
+export function bumpBranchName(
+    releaseGroup: ReleaseGroup,
+    bumpType: VersionBumpType,
+    version: string,
+) {
     const scheme = detectVersionScheme(version);
     const newVersion = bumpVersionScheme(version, bumpType, scheme);
     const branchName = `bump_${releaseGroup.toLowerCase()}_${bumpType}_${newVersion}`;

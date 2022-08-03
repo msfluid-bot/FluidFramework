@@ -9,7 +9,7 @@ import { strict as assert } from "assert";
 import {
     bumpVersionScheme,
     detectVersionScheme,
-    VersionBumpType
+    VersionBumpType,
 } from "@fluid-tools/version-tools";
 import { FlagInput, OutputFlags, ParserOutput } from "@oclif/core/lib/interfaces";
 import chalk from "chalk";
@@ -20,11 +20,11 @@ import {
     CheckSkipper,
     ChecksPolicy,
     ChecksShouldCommit,
-    ChecksValidReleaseGroup
+    ChecksValidReleaseGroup,
 } from "./checks";
 import { checkFlags, rootPathFlag, skipCheckFlag } from "./flags";
 import { createBumpBranch, getPreReleaseDependencies, isReleased } from "./lib";
-import { StateHandler } from "./machines";
+import { StateHandler } from "./machines/machines";
 import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "./releaseGroups";
 
 // This is needed to get type safety working in derived classes.
@@ -174,7 +174,8 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
  */
 export abstract class StateMachineCommand<T extends typeof StateMachineCommand.flags>
     extends BaseCommand<T>
-    implements StateHandler {
+    implements StateHandler
+{
     static flags = {
         ...BaseCommand.flags,
     };
@@ -209,18 +210,6 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
                 this.exit();
             }
 
-            case "CheckHasRemote": {
-                const context = await this.getContext();
-                const remote = await context.gitRepo.getRemote(context.originRemotePartialUrl);
-                if (remote === undefined) {
-                    this.machine.action("failure");
-                    this.logError(`Unable to find remote for '${context.originRemotePartialUrl}'`);
-                }
-
-                this.machine.action("success");
-                break;
-            }
-
             default: {
                 return false;
             }
@@ -250,17 +239,18 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
 export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags>
     extends StateMachineCommand<T>
     implements
-    ChecksValidReleaseGroup,
-    ChecksPolicy,
-    ChecksBranchName,
-    ChecksBranchUpdate,
-    ChecksShouldCommit,
-    CheckSkipper {
+        ChecksValidReleaseGroup,
+        ChecksPolicy,
+        ChecksBranchName,
+        ChecksBranchUpdate,
+        ChecksShouldCommit,
+        CheckSkipper
+{
     static flags = {
         skipChecks: skipCheckFlag,
         ...checkFlags,
         ...StateMachineCommand.flags,
-    }
+    };
 
     abstract get shouldSkipChecks(): boolean;
     abstract set shouldSkipChecks(v: boolean);
@@ -283,35 +273,28 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
     abstract checkBranchName(name: string): boolean;
 
     get checkBranchNameErrorMessage() {
-        return `Branch name '${this._context?.originalBranchName}' isn't expected.`;
+        return `Branch name '${this._context?.originalBranchName}' isn't expected. You can skip this check with --no-branchCheck.`;
     }
 
     protected async initMachineHooks() {
         this.machine.hook_exit("Init", (o: any) => {
             const { action } = o;
-            if (action === "skipChecks") {
+            if (action === "failure") {
                 this.warn(`Skipping ALL CHECKS! Be sure you know what you are doing!`);
             }
         });
     }
 
-    // async run() {
-    //     const context = await this.getContext();
-    //     const flags = this.processedFlags;
+    async init() {
+        await super.init();
+        const flags = this.processedFlags;
 
-    //     this.releaseGroup = flags.releaseGroup!;
-    //     this.releaseVersion = context.repo.releaseGroups.get(this.releaseGroup!)!.version;
-
-    //     this.shouldSkipChecks = flags.skipChecks;
-    //     this.shouldCheckPolicy = flags.policyCheck && !flags.skipChecks;
-    //     this.shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
-    //     this.shouldCommit = flags.commit && !flags.skipChecks;
-    //     this.shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
-
-    //     const shouldInstall = flags.install && !flags.skipChecks;
-
-    //     await this.stateLoop();
-    // }
+        this.shouldSkipChecks = flags.skipChecks;
+        this.shouldCheckPolicy = flags.policyCheck && !flags.skipChecks;
+        this.shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
+        this.shouldCommit = flags.commit && !flags.skipChecks;
+        this.shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
+    }
 
     // eslint-disable-next-line complexity
     async handleState(state: string): Promise<boolean> {
@@ -321,12 +304,15 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
         // First handle any states that we know about. If not handled here, we pass it up to the parent handler.
         switch (state) {
             case "Init": {
-                if (this.shouldSkipChecks) {
-                    this.machine.action("skipChecks");
-                }
-
                 this.machine.action("success");
                 break;
+            }
+
+            case "CheckShouldRunChecks": {
+                if (this.shouldSkipChecks) {
+                    this.machine.action("failure");
+                }
+                this.machine.action("success");
             }
 
             case "CheckValidReleaseGroup": {
@@ -402,7 +388,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 break;
             }
 
-            case "CheckForPrereleaseDependencies": {
+            case "CheckNoPrereleaseDependencies": {
                 const prereleaseDepNames = await getPreReleaseDependencies(
                     context,
                     this.releaseGroup!,
@@ -460,16 +446,21 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 const version = context.repo.releaseGroups.get(this.releaseGroup)!.version;
                 const scheme = detectVersionScheme(version);
                 const newVersion = bumpVersionScheme(version, this.bumpType, scheme);
-                const bumpBranchName = await createBumpBranch(context, this.releaseGroup, this.bumpType);
+                const bumpBranchName = await createBumpBranch(
+                    context,
+                    this.releaseGroup,
+                    this.bumpType,
+                );
 
                 this.verbose(`Created bump branch: ${bumpBranchName}`);
-                this.log(`BUMP: (${this.bumpType}): bumping ${chalk.blue(this.bumpType)} version to ${newVersion}`);
+                this.log(
+                    `BUMP: (${this.bumpType}): bumping ${chalk.blue(
+                        this.bumpType,
+                    )} version to ${newVersion}`,
+                );
 
                 const commitMsg = `[bump] ${this.releaseGroup}: ${version} => ${newVersion} (${this.bumpType})`;
-                await context.gitRepo.commit(
-                    commitMsg,
-                    `Error committing to ${bumpBranchName}`,
-                );
+                await context.gitRepo.commit(commitMsg, `Error committing to ${bumpBranchName}`);
                 this.machine.action("success");
                 break;
             }
