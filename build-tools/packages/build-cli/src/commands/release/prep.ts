@@ -3,21 +3,32 @@
  * Licensed under the MIT License.
  */
 
-import { strict as assert } from "assert";
-import { Context, FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
-import { bumpVersionScheme, detectVersionScheme } from "@fluid-tools/version-tools";
 import chalk from "chalk";
-import { BaseReleaseCommand } from "../release";
-import { bumpTypeExtendedFlag, releaseGroupFlag } from "../../flags";
-import { isReleaseGroup, ReleaseGroup } from "../../releaseGroups";
-import { releaseBranchName, bumpReleaseGroup, npmCheckUpdates, createBumpBranch } from "../../lib";
-
-const supportedBranches = new Set(["main", "next"]);
+import {
+    bumpVersionScheme,
+    detectVersionScheme,
+    VersionBumpType,
+} from "@fluid-tools/version-tools";
+import { FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
+import { bumpTypeFlag, releaseGroupFlag } from "../../flags";
+import { CommandWithChecks } from "../../base";
+import { PrepReleaseMachine } from "../../machines/machines";
+import { bumpBranchName, bumpReleaseGroup, releaseBranchName } from "../../lib";
+import { ReleaseGroup } from "../../releaseGroups";
 
 /**
- * The `release prep` command.
+ * Releases a release group recursively.
+ *
+ * @remarks
+ *
+ * First the release group's dependencies are checked. If any of the dependencies are also in the repo, then they're
+ * checked for the latest release version. If the dependencies have not yet been released, then the command prompts to
+ * perform the release of the dependency, then run the releae command again.
+ *
+ * This process is continued until all the dependencies have been released, after which the release group itself is
+ * released.
  */
-export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.flags> {
+export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.flags> {
     static description =
         "Prepares the repo for a major or minor release. Helps pre-bump to the next major/minor so release branches can be created.";
 
@@ -27,172 +38,182 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
         releaseGroup: releaseGroupFlag({
             required: true,
         }),
-        bumpType: bumpTypeExtendedFlag({
+        bumpType: bumpTypeFlag({
             options: ["major", "minor"],
             required: true,
         }),
-        ...BaseReleaseCommand.flags,
+        ...CommandWithChecks.flags,
     };
 
-    static args = [];
+    machine = PrepReleaseMachine.machine;
 
-    async run(): Promise<void> {
-        const flags = this.processedFlags;
-        const context = await this.getContext();
-        const shouldCheckPolicy = flags.policyCheck && !flags.skipChecks;
-        const shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
-        const shouldInstall = flags.install && !flags.skipChecks;
-        const shouldCommit = flags.commit && !flags.skipChecks;
-        const shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
-
-        const releaseGroup: ReleaseGroup = flags.releaseGroup;
-
-        // TODO: run policy check before releasing a version.
-        if (shouldCheckPolicy) {
-            if (shouldCheckBranch && context.originalBranchName !== "main") {
-                this.warn(
-                    `Skipping policy check because the branch is not main: '${context.originalBranchName}'`,
-                );
-            }
-            // await runPolicyCheckWithFix(context);
-        } else {
-            this.warn("Skipping policy check.");
-        }
-
-        if (shouldCheckBranch && !supportedBranches.has(context.originalBranchName)) {
-            this.error(
-                `Release prep should only be done on 'main' or 'next' branches, but current branch is '${context.originalBranchName}'.`,
-            );
-        }
-
-        if (!supportedBranches.has(context.originalBranchName)) {
-            this.warn(
-                `Release prep should only be done on 'main' or 'next' branches. Make sure you know what you are doing!`,
-            );
-        }
-
-        const remote = await context.gitRepo.getRemote(context.originRemotePartialUrl);
-        if (remote === undefined) {
-            this.error(`Unable to find remote for '${context.originRemotePartialUrl}'`);
-        }
-
-        if (
-            shouldCheckBranchUpdate &&
-            !(await context.gitRepo.isBranchUpToDate(context.originalBranchName, remote))
-        ) {
-            this.error(
-                `Local '${context.originalBranchName}' branch not up to date with remote. Please pull from '${remote}'.`,
-            );
-        } else if (!shouldCheckBranchUpdate) {
-            this.warn("Not checking if the branch is up-to-date with the remote.");
-        }
-
-        // Bump any pre-release packages that have releases to their released version.
-        const updates = await npmCheckUpdates(
-            context,
-            releaseGroup,
-            context.packagesNotInReleaseGroup(releaseGroup).map((p) => p.name),
-            "current",
-            /* prerelease */ false,
-            /* writeChanges */ true,
-            await this.getLogger(),
-        );
-
-        if (updates.length > 0) {
-            // TODO: create branch and commit changes automatically -- maybe pull out shared logic with release command?
-            this.log(chalk.red(`\nFound prelease dependencies on released packages.`));
-            this.log(
-                `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
-            );
-            this.exit();
-        } else {
-            this.log(chalk.green(`No prerelease dependencies found.`));
-        }
-
-        assert(flags.bumpType === "major" || flags.bumpType === "minor");
-
-        await this.createReleaseBranchesAndBump(
-            context,
-            releaseGroup,
-            flags.bumpType,
-            shouldInstall,
-            shouldCommit,
-        );
-
-        this.exit();
+    releaseGroup: ReleaseGroup | undefined;
+    releaseVersion: string | undefined;
+    shouldSkipChecks = false;
+    shouldCheckPolicy = true;
+    shouldCheckBranch = true;
+    shouldCheckBranchUpdate = true;
+    shouldCommit = true;
+    bumpType = "minor" as VersionBumpType;
+    checkBranchName(name: string): boolean {
+        this.verbose(`Checking if ${name} is 'main', 'next', or 'lts'.`);
+        return ["main", "next", "lts"].includes(name);
     }
 
-    /**
-     * Create release bump branch based on the repo state for either main or next branches, bump minor version
-     * immediately and push it to `main` and the new release branch to remote.
-     */
-    // eslint-disable-next-line max-params
-    async createReleaseBranchesAndBump(
-        context: Context,
-        releaseGroup: ReleaseGroup,
-        bumpType: "minor" | "major",
-        shouldInstall: boolean,
-        shouldCommit: boolean,
-    ) {
-        this.log(`Preparing for a ${bumpType} release of the ${releaseGroup} release group.`);
+    get checkBranchNameErrorMessage(): string {
+        return `Release prep should only be done on 'main', 'next', or 'lts' branches, but current branch is '${this._context?.originalBranchName}'.`;
+    }
 
-        // // Create release branch
-        const releaseVersion = context.repo.releaseGroups.get(releaseGroup)!.version;
-        const scheme = detectVersionScheme(releaseVersion);
-        const newVersion = bumpVersionScheme(releaseVersion, bumpType, scheme);
-        const releaseBranch = releaseBranchName(releaseGroup, releaseVersion);
+    async handleState(state: string): Promise<boolean> {
+        const context = await this.getContext();
+        let localHandled = true;
 
-        const commit = await context.gitRepo.getShaForBranch(releaseBranch);
-        if (commit !== undefined) {
-            this.error(`${releaseBranch} already exists`);
-        }
-
-        // Make sure everything is installed (so that we can do build:genver)
-        const rgMonoRepo = context.repo.releaseGroups.get(MonoRepoKind.BuildTools)!;
-        this.log(`Installing build-tools so we can run build:genver`);
-        const ret = await rgMonoRepo.install();
-        if (ret.error) {
-            this.error("Install failed.");
-        }
-
-        console.log(`Release bump: bumping ${chalk.blue(bumpType)} version to ${newVersion}`);
-        const bumpBranch = await createBumpBranch(context, releaseGroup, bumpType);
-        const bumpResults = await bumpReleaseGroup(bumpType, rgMonoRepo, scheme);
-        this.verbose(bumpResults);
-
-        if (shouldInstall) {
-            if (!(await FluidRepo.ensureInstalled(rgMonoRepo.packages, false))) {
-                this.error("Install failed.");
+        switch (state) {
+            case "PromptToCommitBump": {
+                this.log(
+                    `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
+                );
+                this.log(
+                    `\nAfter the PR is merged, then the release of ${this.releaseGroup} is complete!`,
+                );
+                this.exit();
+                break;
             }
-        } else {
-            this.warn(`Skipping installation. Lockfiles might be outdated.`);
+
+            case "PromptToCommitDeps": {
+                this.log(
+                    `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
+                );
+                this.exit();
+                break;
+            }
+
+            case "CheckReleaseBranch": {
+                // Check release branch
+                const releaseBranch = releaseBranchName(this.releaseGroup!, this.releaseVersion!);
+
+                const commit = await context.gitRepo.getShaForBranch(releaseBranch);
+                if (commit !== undefined) {
+                    this.logError(`${releaseBranch} already exists`);
+                    this.machine.action("failure");
+                }
+
+                this.machine.action("success");
+                break;
+            }
+
+            case "CheckInstallBuildTools": {
+                // Make sure everything is installed (so that we can do build:genver)
+                const buildToolsMonoRepo = context.repo.releaseGroups.get(MonoRepoKind.BuildTools)!;
+                this.log(`Installing build-tools so we can run build:genver`);
+                const ret = await buildToolsMonoRepo.install();
+                if (ret.error) {
+                    this.logError("Install failed.");
+                    this.machine.action("failure");
+                }
+
+                this.machine.action("success");
+                break;
+            }
+
+            case "DoReleaseGroupBumpMinor": {
+                const rgRepo = context.repo.releaseGroups.get(this.releaseGroup!)!;
+                const scheme = detectVersionScheme(this.releaseVersion!);
+                const newVersion = bumpVersionScheme(this.releaseVersion, this.bumpType, scheme);
+
+                this.log(
+                    `Release bump: bumping ${chalk.blue(this.bumpType)} version to ${newVersion}`,
+                );
+                const bumpResults = await bumpReleaseGroup(this.bumpType, rgRepo, scheme);
+                this.verbose(`Raw bump results:`);
+                this.verbose(bumpResults);
+
+                if (!(await FluidRepo.ensureInstalled(rgRepo.packages, false))) {
+                    this.logError("Install failed.");
+                    this.machine.action("failure");
+                }
+
+                this.machine.action("success");
+                break;
+            }
+
+            case "PromptToPRBump": {
+                const bumpBranch = bumpBranchName(
+                    this.releaseGroup!,
+                    this.bumpType,
+                    this.releaseVersion!,
+                );
+                this.logHr();
+                this.log(
+                    `\n* Please push and create a PR for branch ${bumpBranch} targeting ${context.originalBranchName}.`,
+                );
+
+                if (context.originalBranchName === "main") {
+                    const releaseBranch = releaseBranchName(
+                        this.releaseGroup!,
+                        this.releaseVersion!,
+                    );
+                    this.log(
+                        `\n* After PR is merged, create branch ${releaseBranch} one commit before the merged PR and push to the repo.`,
+                    );
+                }
+
+                this.log(
+                    `\n* Once the release branch has been created, switch to it and use the following command to release the ${this.releaseGroup} release group:\n`,
+                );
+                this.logIndent(
+                    `${this.config.bin} release -g ${this.releaseGroup} -t ${this.bumpType}`,
+                );
+                this.exit();
+                break;
+            }
+
+            case "PromptToPRDeps": {
+                const scheme = detectVersionScheme(this.releaseVersion!);
+                const cmd = `${this.config.bin} ${this.id} -g ${this.releaseGroup} -S ${scheme}`;
+
+                this.logHr();
+                this.log(
+                    `\nPlease push and create a PR for branch ${await context.gitRepo.getCurrentBranchName()} targeting the ${
+                        context.originalBranchName
+                    } branch.`,
+                );
+                this.log(
+                    `\nAfter the PR is merged, run the following command to continue the release:`,
+                );
+                this.logIndent(chalk.whiteBright(`\n${cmd}`));
+                this.exit();
+                break;
+            }
+
+            default: {
+                localHandled = false;
+            }
         }
 
-        if (shouldCommit) {
-            await context.gitRepo.commit(
-                `[bump] ${releaseGroup} (${bumpType})`,
-                `Error committing`,
-            );
-        } else {
-            this.log(
-                `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
-            );
+        if (localHandled) {
+            return true;
         }
 
-        this.logHr();
-        this.log(
-            `\n* Please push and create a PR for branch ${bumpBranch} targeting ${context.originalBranchName}.`,
-        );
+        const superHandled = await super.handleState(state);
+        return superHandled;
+    }
 
-        if (context.originalBranchName === "main") {
-            this.log(
-                `\n* After PR is merged, create branch ${releaseBranch} one commit before the merged PR and push to the repo.`,
-            );
-        }
+    async run(): Promise<void> {
+        const context = await this.getContext();
+        const flags = this.processedFlags;
 
-        this.log(
-            `\n* Once the release branch has been created, switch to it and use the following command to release the ${releaseGroup} release group:\n`,
-        );
-        this.logIndent(`${this.config.bin} release -g ${releaseGroup} -t ${bumpType}`);
+        this.releaseGroup = flags.releaseGroup;
+        this.releaseVersion = context.repo.releaseGroups.get(this.releaseGroup)!.version;
+
+        this.shouldSkipChecks = flags.skipChecks;
+        this.shouldCheckPolicy = flags.policyCheck && !flags.skipChecks;
+        this.shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
+        this.shouldCommit = flags.commit && !flags.skipChecks;
+        this.shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
+
+        const shouldInstall = flags.install && !flags.skipChecks;
+
+        await this.stateLoop();
     }
 }
