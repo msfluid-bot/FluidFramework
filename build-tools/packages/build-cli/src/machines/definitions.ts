@@ -95,11 +95,12 @@ CheckInstallBuildTools
 ] 'failure' => Failed;
 
 CheckNoPrereleaseDependencies 'failure'
-=> DoBumpPrereleaseDependencies 'success'
+=> DoBumpReleasedDependencies 'success'
+=> CheckNoMorePrereleaseDependencies 'success'
 => CheckShouldCommitDeps 'success'
 => PromptToPRDeps;
 
-[DoBumpPrereleaseDependencies
+[
 DoReleaseGroupBumpMinor
 ] 'failure' => Failed;
 
@@ -109,14 +110,17 @@ CheckShouldCommitBump 'failure'
 CheckShouldCommitDeps 'failure'
 => PromptToCommitDeps;
 
+CheckNoMorePrereleaseDependencies 'failure'
+=> PromptToReleaseDeps;
+
 // visual styling
 state DoReleaseGroupBumpMinor: {
-  background-color : steelblue;
-  text-color       : white;
+    background-color : steelblue;
+    text-color       : white;
 };
 
-state DoBumpPrereleaseDependencies: {
-  background-color : steelblue;
-  text-color       : white;
+state DoBumpReleasedDependencies: {
+    background-color : steelblue;
+    text-color       : white;
 };
 `;

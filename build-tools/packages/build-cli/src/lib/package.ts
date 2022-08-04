@@ -80,7 +80,8 @@ export async function npmCheckUpdates(
             const { name } = await readJsonAsync(jsonPath);
             const pkg = context.fullPackageMap.get(name);
             if (pkg === undefined) {
-                throw new Error(`Package not found in context: ${name}`);
+                log?.logWarning(`Package not found in context: ${name}`);
+                continue;
             }
 
             for (const [dep, newRange] of Object.entries(upgradedDeps)) {

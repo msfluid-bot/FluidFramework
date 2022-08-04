@@ -42,14 +42,16 @@ export const stateDescriptions = new Map([
     ],
     ["DoReleaseGroupBumpPatch", "Does a patch bump of the release group."],
     ["DoReleaseGroupBumpMinor", "Does a minor bump of the release group."],
-    ["DoBumpPrereleaseDependencies", "Bumps pre-release dependencies to release versions."],
     ["PromptToPRBump", "Prompts to create a bump PR from the current branch."],
     ["PromptToPRDeps", "Prompts to create a dependency bump PR from the current branch."],
     ["PromptToCommitBump", "Prompts to commit local bump changes manually."],
     ["PromptToCommitDeps", "Prompts to commit local dependency changes manually."],
     ["PromptToRelease", "Prompts to run a release build in ADO."],
     ["PromptToReleaseDeps", "Prompts to run a release builds in ADO for unreleased dependencies."],
-    ["DoBumpReleasedDependencies", "Does a bump of all prerelease dependencies that have been released (by checking npm)."]
+    [
+        "DoBumpReleasedDependencies",
+        "Does a bump of all prerelease dependencies that have been released (by checking npm).",
+    ],
 ]);
 
 export const actionDescriptions = new Map([

@@ -186,7 +186,8 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
  */
 export abstract class StateMachineCommand<T extends typeof StateMachineCommand.flags>
     extends BaseCommand<T>
-    implements StateHandler {
+    implements StateHandler
+{
     static flags = {
         ...BaseCommand.flags,
     };
@@ -249,12 +250,13 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
 export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags>
     extends StateMachineCommand<T>
     implements
-    ChecksValidReleaseGroup,
-    ChecksPolicy,
-    ChecksBranchName,
-    ChecksBranchUpdate,
-    ChecksShouldCommit,
-    CheckSkipper {
+        ChecksValidReleaseGroup,
+        ChecksPolicy,
+        ChecksBranchName,
+        ChecksBranchUpdate,
+        ChecksShouldCommit,
+        CheckSkipper
+{
     static flags = {
         skipChecks: skipCheckFlag,
         ...checkFlags,
@@ -341,6 +343,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 // TODO: run policy check before releasing a version.
                 if (this.shouldCheckPolicy) {
                     this.warn(chalk.red(`Automated policy check not yet implemented.`));
+                    this.warn(`Run policy check manually and check in all fixes.`);
                     // await runPolicyCheckWithFix(context);
                 } else {
                     this.warn("Skipping policy check.");
@@ -416,6 +419,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
             }
 
             case "DoBumpReleasedDependencies": {
+                const logger = await this.getLogger();
                 // First, update any prereleases that have released versions on npm
                 const updates = await npmCheckUpdates(
                     context,
@@ -424,9 +428,10 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                     "current",
                     true,
                     true,
+                    logger,
                 );
 
-                this.log(`npmCheckUpdates: Updated ${updates.length} packages.`);
+                this.verbose(`npmCheckUpdates: Updated ${updates.length} packages.`);
 
                 if (!(await FluidRepo.ensureInstalled(updates))) {
                     this.logError("Install failed.");
@@ -492,9 +497,15 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
             }
 
             case "PromptToReleaseDeps": {
-                const prereleaseDepNames = await getPreReleaseDependencies(context, this.releaseGroup!);
+                const prereleaseDepNames = await getPreReleaseDependencies(
+                    context,
+                    this.releaseGroup!,
+                );
 
-                if (prereleaseDepNames.releaseGroups.length > 0 || prereleaseDepNames.packages.length > 0) {
+                if (
+                    prereleaseDepNames.releaseGroups.length > 0 ||
+                    prereleaseDepNames.packages.length > 0
+                ) {
                     this.log(
                         chalk.red(
                             `\nCan't release the ${this.releaseGroup} release group because some of its dependencies need to be released first.`,

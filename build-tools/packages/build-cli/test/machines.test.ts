@@ -104,11 +104,7 @@ describe("states and actions are described", () => {
     it("all described actions are machine actions", () => {
         const actions = [...actionDescriptions.keys()].filter((s) => !machineActions.has(s));
 
-        assert.equal(
-            actions.length,
-            0,
-            `Unknown states: ${[...actions].join(", ")}`,
-        );
+        assert.equal(actions.length, 0, `Unknown states: ${[...actions].join(", ")}`);
     });
 
     it("all states are described", () => {
@@ -124,10 +120,6 @@ describe("states and actions are described", () => {
     it("all described states are machine states", () => {
         const states = [...stateDescriptions.keys()].filter((s) => !machineStates.has(s));
 
-        assert.equal(
-            states.length,
-            0,
-            `Unknown states: ${[...states].join(", ")}`,
-        );
+        assert.equal(states.length, 0, `Unknown states: ${[...states].join(", ")}`);
     });
 });

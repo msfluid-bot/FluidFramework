@@ -5,10 +5,9 @@
 
 import { VersionBumpType } from "@fluid-tools/version-tools";
 import chalk from "chalk";
-import { FluidRepo } from "@fluidframework/build-tools";
 import { CommandWithChecks } from "../base";
 import { packageSelectorFlag, releaseGroupFlag, versionSchemeFlag } from "../flags";
-import { bumpReleaseGroup, getPreReleaseDependencies, npmCheckUpdates } from "../lib";
+import { bumpReleaseGroup } from "../lib";
 import { ReleaseMachine } from "../machines";
 import { isReleaseGroup, ReleaseGroup } from "../releaseGroups";
 
@@ -89,7 +88,7 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
                 this.machine.action("success");
                 break;
             }
-            
+
             case "PromptToPRBump": {
                 this.logHr();
                 this.log(
@@ -176,7 +175,6 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
     }
 
     async init() {
-        console.log(`inside release2 init`);
         await super.init();
         await super.initMachineHooks();
 
@@ -187,7 +185,6 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
 
     async run(): Promise<void> {
         await this.init();
-        console.log(`inside release2 run`);
         await this.stateLoop();
     }
 }

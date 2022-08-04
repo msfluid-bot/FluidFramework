@@ -199,21 +199,17 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
         return superHandled;
     }
 
-    async run(): Promise<void> {
+    async init() {
+        await super.init();
+        await super.initMachineHooks();
+
         const context = await this.getContext();
-        const flags = this.processedFlags;
-
-        this.releaseGroup = flags.releaseGroup;
+        this.releaseGroup = this.processedFlags.releaseGroup!;
         this.releaseVersion = context.repo.releaseGroups.get(this.releaseGroup)!.version;
+    }
 
-        this.shouldSkipChecks = flags.skipChecks;
-        this.shouldCheckPolicy = flags.policyCheck && !flags.skipChecks;
-        this.shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
-        this.shouldCommit = flags.commit && !flags.skipChecks;
-        this.shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
-
-        const shouldInstall = flags.install && !flags.skipChecks;
-
+    async run(): Promise<void> {
+        await this.init();
         await this.stateLoop();
     }
 }
