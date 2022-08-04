@@ -6,11 +6,6 @@
 import type { Machine } from "jssm";
 import { PrepReleaseMachineDefinition, ReleaseMachineDefinition } from "./definitions";
 
-export interface StateHandler {
-    handleState: (state: string) => Promise<boolean>;
-    isHandledState?: (state: string) => Promise<boolean>;
-}
-
 /**
  * A StateMachine combines an actual machine with known state and actions which are used to test that all states and
  * actions are accounted for. Note that this doesn't ensure all states are handled.
@@ -19,6 +14,13 @@ export interface StateMachine {
     knownActions: string[];
     knownStates: string[];
     machine: Machine<unknown>;
+}
+
+/**
+ * A StateHandler is an object that can handle states.
+ */
+export interface StateHandler {
+    handleState: (state: string) => Promise<boolean>;
 }
 
 const commonKnownActions = ["success", "failure"];
@@ -38,18 +40,20 @@ export const ReleaseMachine: StateMachine = {
         "CheckHasRemote",
         "CheckIfCurrentReleaseGroupIsReleased",
         "CheckNoPrereleaseDependencies",
+        "CheckNoMorePrereleaseDependencies",
         "CheckPolicy",
         "CheckShouldCommitBump",
         "CheckShouldCommitDeps",
         "CheckShouldRunChecks",
         "CheckValidReleaseGroup",
-        "DoBumpPrereleaseDependencies",
+        "DoBumpReleasedDependencies",
         "DoReleaseGroupBumpPatch",
         "PromptToCommitBump",
         "PromptToCommitDeps",
         "PromptToPRBump",
         "PromptToPRDeps",
         "PromptToRelease",
+        "PromptToReleaseDeps",
     ],
     machine: ReleaseMachineDefinition,
 };
@@ -80,4 +84,9 @@ export const PrepReleaseMachine: StateMachine = {
     machine: PrepReleaseMachineDefinition,
 };
 
+/**
+ * An array of all known machines. Intended for testing.
+ *
+ * @internal
+ * */
 export const allMachines = [ReleaseMachine, PrepReleaseMachine];

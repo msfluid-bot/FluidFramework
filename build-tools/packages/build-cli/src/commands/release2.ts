@@ -3,24 +3,14 @@
  * Licensed under the MIT License.
  */
 
-import { strict as assert } from "assert";
-import {
-    bumpVersionScheme,
-    detectVersionScheme,
-    VersionBumpType,
-} from "@fluid-tools/version-tools";
+import { VersionBumpType } from "@fluid-tools/version-tools";
 import chalk from "chalk";
-import { CommandWithChecks, StateMachineCommand } from "../base";
-import {
-    checkFlags,
-    packageSelectorFlag,
-    releaseGroupFlag,
-    skipCheckFlag,
-    versionSchemeFlag,
-} from "../flags";
-import { bumpReleaseGroup, createBumpBranch } from "../lib";
-import { ReleaseMachine } from "../machines/machines";
-import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "../releaseGroups";
+import { FluidRepo } from "@fluidframework/build-tools";
+import { CommandWithChecks } from "../base";
+import { packageSelectorFlag, releaseGroupFlag, versionSchemeFlag } from "../flags";
+import { bumpReleaseGroup, getPreReleaseDependencies, npmCheckUpdates } from "../lib";
+import { ReleaseMachine } from "../machines";
+import { isReleaseGroup, ReleaseGroup } from "../releaseGroups";
 
 /**
  * Releases a release group recursively.
@@ -73,31 +63,15 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
     }
 
     get checkBranchNameErrorMessage(): string {
-        return `Patch release should only be done on 'release/*' branches, but current branch is '${this._context?.originalBranchName}. You can skip this check with --no-branchCheck.'`;
+        return `Patch release should only be done on 'release/*' branches, but current branch is '${this._context?.originalBranchName}'.\nYou can skip this check with --no-branchCheck.'`;
     }
 
     async handleState(state: string): Promise<boolean> {
         const context = await this.getContext();
         let localHandled = true;
-        // let superHandled = false;
 
         // First handle any states that we know about. If not handled here, we pass it up to the parent handler.
         switch (state) {
-            // case "CheckShouldCommit": {
-            //     assert(isReleaseGroup(this.releaseGroup));
-            //     const version = context.repo.releaseGroups.get(this.releaseGroup)!.version;
-            //     const scheme = detectVersionScheme(version);
-            //     const newVersion = bumpVersionScheme(version, this.bumpType, scheme);
-            //     const bumpBranch = await createBumpBranch(context, this.releaseGroup, "patch");
-            //     this.verbose(`Created bump branch: ${bumpBranch}`);
-            //     await context.gitRepo.commit(
-            //         `[bump] ${this.releaseGroup}: ${version} => ${newVersion} (${this.bumpType})`,
-            //         `Error committing`,
-            //     );
-            //     this.machine.action("success");
-            //     break;
-            // }
-
             case "DoReleaseGroupBumpPatch": {
                 if (!isReleaseGroup(this.releaseGroup)) {
                     this.logError(`Expected a release group: ${this.releaseGroup}`);
@@ -115,7 +89,7 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
                 this.machine.action("success");
                 break;
             }
-
+            
             case "PromptToPRBump": {
                 this.logHr();
                 this.log(
@@ -202,13 +176,18 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
     }
 
     async init() {
+        console.log(`inside release2 init`);
         await super.init();
+        await super.initMachineHooks();
+
         const context = await this.getContext();
         this.releaseGroup = this.processedFlags.releaseGroup!;
-        this.releaseVersion = context.repo.releaseGroups.get(this.releaseGroup!)!.version;
+        this.releaseVersion = context.repo.releaseGroups.get(this.releaseGroup)!.version;
     }
 
     async run(): Promise<void> {
+        await this.init();
+        console.log(`inside release2 run`);
         await this.stateLoop();
     }
 }

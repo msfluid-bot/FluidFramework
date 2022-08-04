@@ -45,7 +45,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
         const shouldCommit = flags.commit && !flags.skipChecks;
         const shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
 
-        let releaseGroup: ReleaseGroup = flags.releaseGroup;
+        const releaseGroup: ReleaseGroup = flags.releaseGroup;
 
         // TODO: run policy check before releasing a version.
         if (shouldCheckPolicy) {
@@ -146,7 +146,7 @@ export default class PrepCommand extends BaseReleaseCommand<typeof PrepCommand.f
         if (commit !== undefined) {
             this.error(`${releaseBranch} already exists`);
         }
-        ///////////////
+
         // Make sure everything is installed (so that we can do build:genver)
         const rgMonoRepo = context.repo.releaseGroups.get(MonoRepoKind.BuildTools)!;
         this.log(`Installing build-tools so we can run build:genver`);

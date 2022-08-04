@@ -99,6 +99,7 @@ export async function npmCheckUpdates(
 export interface PreReleaseDependencies {
     releaseGroups: ReleaseGroup[];
     packages: ReleasePackage[];
+    isEmpty: boolean;
 }
 
 /**
@@ -166,7 +167,11 @@ export async function getPreReleaseDependencies(
         }
     }
 
-    return { releaseGroups: [...prereleaseGroups], packages: [...prereleasePackages] };
+    return {
+        releaseGroups: [...prereleaseGroups],
+        packages: [...prereleasePackages],
+        isEmpty: prereleaseGroups.size > 0 || prereleasePackages.size > 0,
+    };
 }
 
 function getPackagesFromReleasePackages(

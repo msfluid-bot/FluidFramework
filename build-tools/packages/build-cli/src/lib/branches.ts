@@ -9,9 +9,10 @@ import {
     detectVersionScheme,
     fromInternalScheme,
     VersionBumpType,
+    VersionBumpTypeExtended,
 } from "@fluid-tools/version-tools";
 import * as semver from "semver";
-import { ReleaseGroup } from "../releaseGroups";
+import { ReleaseGroup, ReleasePackage } from "../releaseGroups";
 
 // export async function createBranchForBump(
 //     context: Context,
@@ -50,12 +51,22 @@ export async function createBumpBranch(
  */
 export function bumpBranchName(
     releaseGroup: ReleaseGroup,
-    bumpType: VersionBumpType,
+    bumpType: VersionBumpTypeExtended,
     version: string,
 ) {
     const scheme = detectVersionScheme(version);
     const newVersion = bumpVersionScheme(version, bumpType, scheme);
     const branchName = `bump_${releaseGroup.toLowerCase()}_${bumpType}_${newVersion}`;
+    return branchName;
+}
+
+export function bumpDepsBranchName(
+    bumpedDep: ReleaseGroup | ReleasePackage,
+    bumpType: VersionBumpTypeExtended | string,
+    releaseGroup?: ReleaseGroup,
+): string {
+    const releaseGroupSegment = releaseGroup ? `_${releaseGroup}` : "";
+    const branchName = `bump_deps_${bumpedDep.toLowerCase()}_${bumpType}${releaseGroupSegment}`;
     return branchName;
 }
 

@@ -3,9 +3,15 @@
  * Licensed under the MIT License.
  */
 
-import { Context, getResolvedFluidRoot, GitRepo, Logger } from "@fluidframework/build-tools";
-import { Command, Flags } from "@oclif/core";
 import { strict as assert } from "assert";
+import {
+    Context,
+    FluidRepo,
+    getResolvedFluidRoot,
+    GitRepo,
+    Logger,
+} from "@fluidframework/build-tools";
+import { Command, Flags } from "@oclif/core";
 import {
     bumpVersionScheme,
     detectVersionScheme,
@@ -23,7 +29,13 @@ import {
     ChecksValidReleaseGroup,
 } from "./checks";
 import { checkFlags, rootPathFlag, skipCheckFlag } from "./flags";
-import { createBumpBranch, getPreReleaseDependencies, isReleased, releaseBranchName } from "./lib";
+import {
+    createBumpBranch,
+    getPreReleaseDependencies,
+    isReleased,
+    npmCheckUpdates,
+    releaseBranchName,
+} from "./lib";
 import { StateHandler } from "./machines/machines";
 import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "./releaseGroups";
 
@@ -174,20 +186,20 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
  */
 export abstract class StateMachineCommand<T extends typeof StateMachineCommand.flags>
     extends BaseCommand<T>
-    implements StateHandler
-{
+    implements StateHandler {
     static flags = {
         ...BaseCommand.flags,
     };
 
     abstract get machine(): Machine<unknown>;
+
     async init(): Promise<void> {
         await super.init();
-        await this.initMachineHooks();
     }
 
     /** Wires up some hooks on the machine to do logging */
     protected async initMachineHooks() {
+        this.log(`logging initMachineHooks`);
         for (const state of this.machine.states()) {
             if (this.machine.state_is_terminal(state)) {
                 this.machine.hook_entry(state, (o: any) => {
@@ -214,8 +226,6 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
                 return false;
             }
         }
-
-        return true;
     }
 
     /** Loops over the state machine and calls handleState for each machine state. Subclasses should call this at the
@@ -239,13 +249,12 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
 export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags>
     extends StateMachineCommand<T>
     implements
-        ChecksValidReleaseGroup,
-        ChecksPolicy,
-        ChecksBranchName,
-        ChecksBranchUpdate,
-        ChecksShouldCommit,
-        CheckSkipper
-{
+    ChecksValidReleaseGroup,
+    ChecksPolicy,
+    ChecksBranchName,
+    ChecksBranchUpdate,
+    ChecksShouldCommit,
+    CheckSkipper {
     static flags = {
         skipChecks: skipCheckFlag,
         ...checkFlags,
@@ -277,6 +286,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
     }
 
     protected async initMachineHooks() {
+        await super.initMachineHooks();
         this.machine.hook_exit("Init", (o: any) => {
             const { action } = o;
             if (action === "failure") {
@@ -287,6 +297,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
 
     async init() {
         await super.init();
+        // await this.initMachineHooks();
         const flags = this.processedFlags;
 
         this.shouldSkipChecks = flags.skipChecks;
@@ -312,6 +323,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 if (this.shouldSkipChecks) {
                     this.machine.action("failure");
                 }
+
                 this.machine.action("success");
             }
 
@@ -388,35 +400,36 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 break;
             }
 
+            case "CheckNoMorePrereleaseDependencies":
             case "CheckNoPrereleaseDependencies": {
                 const prereleaseDepNames = await getPreReleaseDependencies(
                     context,
                     this.releaseGroup!,
                 );
-                if (
-                    prereleaseDepNames.releaseGroups.length > 0 ||
-                    prereleaseDepNames.packages.length > 0
-                ) {
-                    this.log(
-                        chalk.red(
-                            `\nCan't release the ${this.releaseGroup} release group because some of its dependencies need to be released first.`,
-                        ),
-                    );
+                if (prereleaseDepNames.isEmpty) {
+                    this.machine.action("failure");
+                } else {
+                    this.machine.action("success");
+                }
 
-                    if (prereleaseDepNames.releaseGroups.length > 0) {
-                        this.log(`\nRelease these release groups:`);
-                        for (const p of prereleaseDepNames.releaseGroups) {
-                            this.logIndent(chalk.blueBright(`${p}`));
-                        }
-                    }
+                break;
+            }
 
-                    if (prereleaseDepNames.packages.length > 0) {
-                        this.log(`\nRelease these packages:`);
-                        for (const p of prereleaseDepNames.packages) {
-                            this.logIndent(chalk.blue(`${p}`));
-                        }
-                    }
+            case "DoBumpReleasedDependencies": {
+                // First, update any prereleases that have released versions on npm
+                const updates = await npmCheckUpdates(
+                    context,
+                    this.releaseGroup!,
+                    context.packages.map((p) => p.name),
+                    "current",
+                    true,
+                    true,
+                );
 
+                this.log(`npmCheckUpdates: Updated ${updates.length} packages.`);
+
+                if (!(await FluidRepo.ensureInstalled(updates))) {
+                    this.logError("Install failed.");
                     this.machine.action("failure");
                 } else {
                     this.machine.action("success");
@@ -433,6 +446,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                     this.machine.action("failure");
                     this.logError(`${releaseBranch} already exists`);
                 }
+
                 this.machine.action("success");
             }
 
@@ -453,6 +467,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 if (!this.shouldCommit) {
                     this.machine.action("success");
                 }
+
                 assert(isReleaseGroup(this.releaseGroup));
                 const version = context.repo.releaseGroups.get(this.releaseGroup)!.version;
                 const scheme = detectVersionScheme(version);
@@ -473,6 +488,34 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 const commitMsg = `[bump] ${this.releaseGroup}: ${version} => ${newVersion} (${this.bumpType})`;
                 await context.gitRepo.commit(commitMsg, `Error committing to ${bumpBranchName}`);
                 this.machine.action("success");
+                break;
+            }
+
+            case "PromptToReleaseDeps": {
+                const prereleaseDepNames = await getPreReleaseDependencies(context, this.releaseGroup!);
+
+                if (prereleaseDepNames.releaseGroups.length > 0 || prereleaseDepNames.packages.length > 0) {
+                    this.log(
+                        chalk.red(
+                            `\nCan't release the ${this.releaseGroup} release group because some of its dependencies need to be released first.`,
+                        ),
+                    );
+
+                    if (prereleaseDepNames.releaseGroups.length > 0) {
+                        this.log(`\nRelease these release groups:`);
+                        for (const p of prereleaseDepNames.releaseGroups) {
+                            this.logIndent(chalk.blueBright(`${p}`));
+                        }
+                    }
+
+                    if (prereleaseDepNames.packages.length > 0) {
+                        this.log(`\nRelease these packages:`);
+                        for (const p of prereleaseDepNames.packages) {
+                            this.logIndent(chalk.blue(`${p}`));
+                        }
+                    }
+                }
+                this.exit();
                 break;
             }
 

@@ -21,7 +21,11 @@ export const stateDescriptions = new Map([
     ],
     [
         "CheckNoPrereleaseDependencies",
-        "Succeeds if the release group has no dependencies on pre-release packages within the repo.",
+        "Succeeds if the release group has no dependencies on prerelease packages within the repo.",
+    ],
+    [
+        "CheckNoMorePrereleaseDependencies",
+        "Succeeds if the release group has no dependencies on prerelease packages within the repo.",
     ],
     ["CheckReleaseBranchDoesNotExist", "Succeeds if the release branch does not yet exist."],
     [
@@ -44,6 +48,8 @@ export const stateDescriptions = new Map([
     ["PromptToCommitBump", "Prompts to commit local bump changes manually."],
     ["PromptToCommitDeps", "Prompts to commit local dependency changes manually."],
     ["PromptToRelease", "Prompts to run a release build in ADO."],
+    ["PromptToReleaseDeps", "Prompts to run a release builds in ADO for unreleased dependencies."],
+    ["DoBumpReleasedDependencies", "Does a bump of all prerelease dependencies that have been released (by checking npm)."]
 ]);
 
 export const actionDescriptions = new Map([

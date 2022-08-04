@@ -30,14 +30,17 @@ CheckPolicy
 CheckBranchName
 CheckHasRemote
 CheckBranchUpToDate
-DoBumpPrereleaseDependencies
 DoReleaseGroupBumpPatch
 ] 'failure' => Failed;
 
 CheckNoPrereleaseDependencies 'failure'
-=> DoBumpPrereleaseDependencies 'success'
+=> DoBumpReleasedDependencies 'success'
+=> CheckNoMorePrereleaseDependencies 'success'
 => CheckShouldCommitDeps 'success'
 => PromptToPRDeps;
+
+CheckNoMorePrereleaseDependencies 'failure'
+=> PromptToReleaseDeps;
 
 CheckShouldCommitBump 'failure'
 => PromptToCommitBump;
@@ -54,7 +57,7 @@ state DoReleaseGroupBumpPatch: {
     text-color       : white;
 };
 
-state DoBumpPrereleaseDependencies: {
+state DoBumpReleasedDependencies: {
     background-color : steelblue;
     text-color       : white;
 };

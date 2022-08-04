@@ -9,12 +9,12 @@ import {
     detectVersionScheme,
     VersionBumpType,
 } from "@fluid-tools/version-tools";
+import { FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
 import { bumpTypeFlag, releaseGroupFlag } from "../../flags";
 import { CommandWithChecks } from "../../base";
 import { PrepReleaseMachine } from "../../machines/machines";
 import { bumpBranchName, bumpReleaseGroup, releaseBranchName } from "../../lib";
 import { ReleaseGroup } from "../../releaseGroups";
-import { FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
 
 /**
  * Releases a release group recursively.
@@ -97,6 +97,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                     this.logError(`${releaseBranch} already exists`);
                     this.machine.action("failure");
                 }
+
                 this.machine.action("success");
                 break;
             }
@@ -131,6 +132,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                     this.logError("Install failed.");
                     this.machine.action("failure");
                 }
+
                 this.machine.action("success");
                 break;
             }
@@ -167,7 +169,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
             }
 
             case "PromptToPRDeps": {
-                const scheme = detectVersionScheme(this.releaseVersion!)
+                const scheme = detectVersionScheme(this.releaseVersion!);
                 const cmd = `${this.config.bin} ${this.id} -g ${this.releaseGroup} -S ${scheme}`;
 
                 this.logHr();
