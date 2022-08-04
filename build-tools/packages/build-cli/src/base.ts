@@ -17,6 +17,7 @@ import {
     detectVersionScheme,
     VersionBumpType,
 } from "@fluid-tools/version-tools";
+// eslint-disable-next-line import/no-internal-modules
 import { FlagInput, OutputFlags, ParserOutput } from "@oclif/core/lib/interfaces";
 import chalk from "chalk";
 import type { Machine } from "jssm";
@@ -36,8 +37,8 @@ import {
     npmCheckUpdates,
     releaseBranchName,
 } from "./lib";
-import { StateHandler } from "./machines/machines";
-import { isReleaseGroup, ReleaseGroup, ReleasePackage } from "./releaseGroups";
+import { StateHandler } from "./machines";
+import { isReleaseGroup, ReleaseGroup } from "./releaseGroups";
 
 // This is needed to get type safety working in derived classes.
 // https://github.com/oclif/oclif.github.io/pull/142
@@ -109,12 +110,12 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
                 log: (msg: string | Error) => {
                     this.log(msg.toString());
                 },
-                logWarning: this.warn.bind(this),
+                logWarning: this.logWarning.bind(this),
                 logError: (msg: string | Error) => {
                     this.error(msg);
                 },
                 logVerbose: (msg: string | Error) => {
-                    this.verbose(msg);
+                    this.logVerbose(msg);
                 },
             };
         }
@@ -135,8 +136,8 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
             const branch = await gitRepo.getCurrentBranchName();
             const logger = await this.getLogger();
 
-            this.verbose(`Repo: ${resolvedRoot}`);
-            this.verbose(`Branch: ${branch}`);
+            this.logVerbose(`Repo: ${resolvedRoot}`);
+            this.logVerbose(`Branch: ${branch}`);
 
             this._context = new Context(
                 gitRepo,
@@ -149,12 +150,26 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
         return this._context;
     }
 
-    public warn(message: string | Error): string | Error {
+    /** Output a horizontal rule. */
+    public logHr() {
+        this.log("=".repeat(72));
+    }
+
+    /** Log a message with an indent. */
+    public logIndent(input: string, indent = 2) {
+        this.log(`${" ".repeat(indent)}${input}`);
+    }
+
+    public logError(message: string | Error) {
+        this.log(chalk.red(`ERROR: ${message}`));
+    }
+
+    public logWarning(message: string | Error): string | Error {
         this.log(chalk.yellow(`WARNING: ${message}`));
         return message;
     }
 
-    public verbose(message: string | Error): string | Error {
+    public logVerbose(message: string | Error): string | Error {
         if (this.baseFlags.verbose === true) {
             if (typeof message === "string") {
                 this.log(chalk.grey(`VERBOSE: ${message}`));
@@ -164,20 +179,6 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
         }
 
         return message;
-    }
-
-    /** Output a horizontal rule. */
-    public logHr() {
-        this.log("=".repeat(72));
-    }
-
-    public logError(message: string | Error) {
-        this.log(chalk.red(`ERROR: ${message}`));
-    }
-
-    /** Log a message with an indent. */
-    public logIndent(input: string, indent = 2) {
-        this.log(`${" ".repeat(indent)}${input}`);
     }
 }
 
@@ -196,31 +197,33 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
 
     async init(): Promise<void> {
         await super.init();
+        await this.initMachineHooks();
     }
 
     /** Wires up some hooks on the machine to do logging */
     protected async initMachineHooks() {
-        this.log(`logging initMachineHooks`);
+        console.log(`StateMachine logging initMachineHooks`);
         for (const state of this.machine.states()) {
             if (this.machine.state_is_terminal(state)) {
                 this.machine.hook_entry(state, (o: any) => {
                     const { from, action } = o;
-                    this.verbose(`${state}: ${action} from ${from}`);
+                    this.logVerbose(`${state}: ${action} from ${from}`);
                 });
             }
         }
 
         this.machine.hook_any_transition((t: any) => {
             const { action, from, to } = t;
-            this.verbose(`STATE MACHINE: ${from} [${action}] ==> ${to}`);
+            this.logVerbose(`STATE MACHINE: ${from} [${action}] ==> ${to}`);
         });
     }
 
     async handleState(state: string): Promise<boolean> {
         switch (state) {
             case "Failed": {
-                this.verbose("Failed state!");
+                this.logVerbose("Failed state!");
                 this.exit();
+                return true;
             }
 
             default: {
@@ -241,6 +244,11 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
             }
             // eslint-disable-next-line no-constant-condition
         } while (true);
+    }
+
+    async run(): Promise<void> {
+        // await this.init();
+        await this.stateLoop();
     }
 }
 
@@ -287,19 +295,9 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
         return `Branch name '${this._context?.originalBranchName}' isn't expected. You can skip this check with --no-branchCheck.`;
     }
 
-    protected async initMachineHooks() {
-        await super.initMachineHooks();
-        this.machine.hook_exit("Init", (o: any) => {
-            const { action } = o;
-            if (action === "failure") {
-                this.warn(`Skipping ALL CHECKS! Be sure you know what you are doing!`);
-            }
-        });
-    }
-
     async init() {
         await super.init();
-        // await this.initMachineHooks();
+        await this.initMachineHooks();
         const flags = this.processedFlags;
 
         this.shouldSkipChecks = flags.skipChecks;
@@ -307,6 +305,17 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
         this.shouldCheckBranch = flags.branchCheck && !flags.skipChecks;
         this.shouldCommit = flags.commit && !flags.skipChecks;
         this.shouldCheckBranchUpdate = flags.updateCheck && !flags.skipChecks;
+    }
+
+    protected async initMachineHooks() {
+        console.log(`commandWithChecks logging initMachineHooks`);
+        await super.initMachineHooks();
+        this.machine.hook_exit("Init", (o: any) => {
+            const { action } = o;
+            if (action === "failure") {
+                this.logWarning(`Skipping ALL CHECKS! Be sure you know what you are doing!`);
+            }
+        });
     }
 
     // eslint-disable-next-line complexity
@@ -327,6 +336,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 }
 
                 this.machine.action("success");
+                break;
             }
 
             case "CheckValidReleaseGroup": {
@@ -342,11 +352,11 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
             case "CheckPolicy": {
                 // TODO: run policy check before releasing a version.
                 if (this.shouldCheckPolicy) {
-                    this.warn(chalk.red(`Automated policy check not yet implemented.`));
-                    this.warn(`Run policy check manually and check in all fixes.`);
+                    this.logWarning(chalk.red(`Automated policy check not yet implemented.`));
+                    this.logWarning(`Run policy check manually and check in all fixes.`);
                     // await runPolicyCheckWithFix(context);
                 } else {
-                    this.warn("Skipping policy check.");
+                    this.logWarning("Skipping policy check.");
                 }
 
                 this.machine.action("success");
@@ -360,7 +370,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                         this.machine.action("failure");
                     }
                 } else {
-                    this.warn(
+                    this.logWarning(
                         `Not checking if current branch is a release branch: ${context.originalBranchName}`,
                     );
                 }
@@ -396,7 +406,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
 
                     this.machine.action("success");
                 } else {
-                    this.warn("Not checking if the branch is up-to-date with the remote.");
+                    this.logWarning("Not checking if the branch is up-to-date with the remote.");
                     this.machine.action("success");
                 }
 
@@ -431,13 +441,13 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                     logger,
                 );
 
-                this.verbose(`npmCheckUpdates: Updated ${updates.length} packages.`);
+                this.logVerbose(`npmCheckUpdates: Updated ${updates.length} packages.`);
 
-                if (!(await FluidRepo.ensureInstalled(updates))) {
+                if (await FluidRepo.ensureInstalled(updates)) {
+                    this.machine.action("success");
+                } else {
                     this.logError("Install failed.");
                     this.machine.action("failure");
-                } else {
-                    this.machine.action("success");
                 }
 
                 break;
@@ -453,6 +463,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 }
 
                 this.machine.action("success");
+                break;
             }
 
             case "CheckIfCurrentReleaseGroupIsReleased": {
@@ -483,7 +494,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                     this.bumpType,
                 );
 
-                this.verbose(`Created bump branch: ${bumpBranchName}`);
+                this.logVerbose(`Created bump branch: ${bumpBranchName}`);
                 this.log(
                     `BUMP: (${this.bumpType}): bumping ${chalk.blue(
                         this.bumpType,
@@ -526,6 +537,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                         }
                     }
                 }
+
                 this.exit();
                 break;
             }

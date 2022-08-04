@@ -3,4 +3,4 @@
  * Licensed under the MIT License.
  */
 
-export { StateMachine, ReleaseMachine, PrepReleaseMachine } from "./machines";
+export { StateMachine, StateHandler, ReleaseMachine, PrepReleaseMachine } from "./machines";

@@ -23,7 +23,7 @@ import { isReleaseGroup, ReleaseGroup } from "../releaseGroups";
  * This process is continued until all the dependencies have been released, after which the release group itself is
  * released.
  */
-export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCommand2.flags> {
+export default class ReleaseCommand extends CommandWithChecks<typeof ReleaseCommand.flags> {
     static description = "Release a release group and any dependencies.";
 
     static examples = ["<%= config.bin %> <%= command.id %>"];
@@ -57,7 +57,7 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
     bumpType = "patch" as VersionBumpType;
 
     checkBranchName(name: string): boolean {
-        this.verbose(`Checking if ${name} starts with release/`);
+        this.logVerbose(`Checking if ${name} starts with release/`);
         return name.startsWith("release/");
     }
 
@@ -176,7 +176,6 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
 
     async init() {
         await super.init();
-        await super.initMachineHooks();
 
         const context = await this.getContext();
         this.releaseGroup = this.processedFlags.releaseGroup!;
@@ -184,7 +183,6 @@ export default class ReleaseCommand2 extends CommandWithChecks<typeof ReleaseCom
     }
 
     async run(): Promise<void> {
-        await this.init();
         await this.stateLoop();
     }
 }

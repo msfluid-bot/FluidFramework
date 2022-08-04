@@ -3,6 +3,12 @@
  * Licensed under the MIT License.
  */
 
+/**
+ * A map of state machine states to descriptions. THis is used in testing only to warn when new states get added or
+ * removed.
+ *
+ * @internal
+ */
 export const stateDescriptions = new Map([
     ["Init", "The initial state that all machines start in."],
     ["Failed", "The terminal state that most states will transition to if they fail."],
@@ -54,6 +60,12 @@ export const stateDescriptions = new Map([
     ],
 ]);
 
+/**
+ * A map of state machine actions to descriptions. THis is used in testing only to warn when new actions get added or
+ * removed.
+ *
+ * @internal
+ */
 export const actionDescriptions = new Map([
     ["success", "Indicates that the state succeeded."],
     ["failure", "Indicates that the state failed."],

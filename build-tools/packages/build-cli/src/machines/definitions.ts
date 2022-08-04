@@ -5,6 +5,19 @@
 
 import { sm } from "jssm";
 
+/**
+ * The state machine definitions in this file are written in Finite State Language (FSL), which is documented at
+ * {@link https://fsl.tools/}.
+ *
+ * They can be visualized using the browser-based tool at
+ * {@link https://stonecypher.github.io/jssm-viz-demo/graph_explorer.html}. Just copy/paste the FSL string for the
+ * machine into the editor.
+ */
+
+/**
+ * An FSL state machine that encodes the Fluid release process.
+ */
+
 export const ReleaseMachineDefinition = sm`
 machine_name: "Fluid Release Process";
 
@@ -63,6 +76,11 @@ state DoBumpReleasedDependencies: {
 };
 `;
 
+/**
+ * The PrepReleaseMachine encodes the Fluid release prep process.
+ *
+ * @alpha
+ */
 export const PrepReleaseMachineDefinition = sm`
 machine_name: "Fluid Release Prep Process";
 

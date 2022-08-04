@@ -12,9 +12,11 @@ import {
 import { FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
 import { bumpTypeFlag, releaseGroupFlag } from "../../flags";
 import { CommandWithChecks } from "../../base";
-import { PrepReleaseMachine } from "../../machines/machines";
+import { PrepReleaseMachine } from "../../machines";
 import { bumpBranchName, bumpReleaseGroup, releaseBranchName } from "../../lib";
 import { ReleaseGroup } from "../../releaseGroups";
+
+// WARNING: This command is a work in progress!!!
 
 /**
  * Releases a release group recursively.
@@ -28,7 +30,7 @@ import { ReleaseGroup } from "../../releaseGroups";
  * This process is continued until all the dependencies have been released, after which the release group itself is
  * released.
  */
-export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.flags> {
+export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.flags> {
     static description =
         "Prepares the repo for a major or minor release. Helps pre-bump to the next major/minor so release branches can be created.";
 
@@ -56,7 +58,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
     shouldCommit = true;
     bumpType = "minor" as VersionBumpType;
     checkBranchName(name: string): boolean {
-        this.verbose(`Checking if ${name} is 'main', 'next', or 'lts'.`);
+        this.logVerbose(`Checking if ${name} is 'main', 'next', or 'lts'.`);
         return ["main", "next", "lts"].includes(name);
     }
 
@@ -125,8 +127,8 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
                     `Release bump: bumping ${chalk.blue(this.bumpType)} version to ${newVersion}`,
                 );
                 const bumpResults = await bumpReleaseGroup(this.bumpType, rgRepo, scheme);
-                this.verbose(`Raw bump results:`);
-                this.verbose(bumpResults);
+                this.logVerbose(`Raw bump results:`);
+                this.logVerbose(bumpResults);
 
                 if (!(await FluidRepo.ensureInstalled(rgRepo.packages, false))) {
                     this.logError("Install failed.");
@@ -201,7 +203,6 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
 
     async init() {
         await super.init();
-        await super.initMachineHooks();
 
         const context = await this.getContext();
         this.releaseGroup = this.processedFlags.releaseGroup!;
@@ -209,7 +210,7 @@ export default class PrepCommand2 extends CommandWithChecks<typeof PrepCommand2.
     }
 
     async run(): Promise<void> {
-        await this.init();
+        // await this.init();
         await this.stateLoop();
     }
 }

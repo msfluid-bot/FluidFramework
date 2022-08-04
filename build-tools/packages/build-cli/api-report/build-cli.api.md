@@ -12,8 +12,15 @@ import { Package } from '@fluidframework/build-tools';
 import { run } from '@oclif/core';
 import { VersionBag } from '@fluidframework/build-tools';
 import { VersionBumpType } from '@fluid-tools/version-tools';
+import { VersionBumpTypeExtended } from '@fluid-tools/version-tools';
 import { VersionChangeType } from '@fluid-tools/version-tools';
 import { VersionScheme } from '@fluid-tools/version-tools';
+
+// @public
+export function bumpBranchName(releaseGroup: ReleaseGroup, bumpType: VersionBumpTypeExtended, version: string): string;
+
+// @public (undocumented)
+export function bumpDepsBranchName(bumpedDep: ReleaseGroup | ReleasePackage, bumpType: VersionBumpTypeExtended | string, releaseGroup?: ReleaseGroup): string;
 
 // @public
 export function bumpPackageDependencies(pkg: Package, bumpPackageMap: Map<string, PackageWithRangeSpec>, prerelease: boolean, onlyBumpPrerelease: boolean, changedVersions?: VersionBag): Promise<boolean>;
@@ -24,12 +31,6 @@ export function bumpReleaseGroup(bumpType: VersionChangeType, releaseGroupOrPack
 // @public
 export function createBumpBranch(context: Context, releaseGroup: ReleaseGroup, bumpType: VersionBumpType): Promise<string>;
 
-// @public (undocumented)
-export function difference<T>(setA: Set<T>, setB: Set<T>): Set<T>;
-
-// Warning: (ae-forgotten-export) The symbol "ReleasePackage" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "PreReleaseDependencies" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function getPreReleaseDependencies(context: Context, releaseGroup: ReleaseGroup | ReleasePackage): Promise<PreReleaseDependencies>;
 
@@ -48,10 +49,23 @@ export interface PackageWithRangeSpec {
 }
 
 // @public (undocumented)
+export interface PreReleaseDependencies {
+    // (undocumented)
+    isEmpty: boolean;
+    // (undocumented)
+    packages: ReleasePackage[];
+    // (undocumented)
+    releaseGroups: ReleaseGroup[];
+}
+
+// @public (undocumented)
 export function releaseBranchName(releaseGroup: ReleaseGroup, version: string): string;
 
 // @public (undocumented)
 export type ReleaseGroup = MonoRepoKind;
+
+// @public (undocumented)
+export type ReleasePackage = string;
 
 export { run }
 
