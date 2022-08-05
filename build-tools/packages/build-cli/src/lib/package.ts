@@ -44,14 +44,20 @@ export async function npmCheckUpdates(
     writeChanges = false,
     // eslint-disable-next-line unicorn/no-useless-undefined
     log: Logger | undefined = undefined,
-): Promise<Package[]> {
+): Promise<{
+    updatedPackages: Package[];
+    updatedDependencies: Package[];
+}> {
     log?.log(`Checking npm for package updates...`);
     const monorepo = context.repo.releaseGroups.get(releaseGroup);
     if (monorepo === undefined) {
         throw new Error(`Can't find release group: ${releaseGroup}`);
     }
 
-    const upgrades: Package[] = [];
+    const updatedPackages: Package[] = [];
+    const deps = new Set<string>();
+    // There can be a lot of duplicate log lines from npm-check-updates, so collect and dedupe before logging.
+    const upgradeLogLines = new Set<string>();
 
     for (const workspaceGlob of monorepo.workspaceGlobs) {
         log?.logVerbose(`Checking packages in ${workspaceGlob}...`);
@@ -85,16 +91,24 @@ export async function npmCheckUpdates(
             }
 
             for (const [dep, newRange] of Object.entries(upgradedDeps)) {
-                log?.logVerbose(`${dep}: '${newRange}'`);
+                upgradeLogLines.add(`    ${dep}: '${newRange}'`);
+                deps.add(dep);
             }
 
             if (Object.keys(upgradedDeps).length > 0) {
-                upgrades.push(pkg);
+                updatedPackages.push(pkg);
             }
         }
     }
 
-    return upgrades;
+    log?.log(`${upgradeLogLines.size} dependencies updated from npm:`);
+    for (const line of upgradeLogLines.values()) {
+        log?.log(line);
+    }
+
+    const updatedDependencies: Package[] = getPackagesFromReleasePackages(context, [...deps]);
+
+    return { updatedPackages, updatedDependencies };
 }
 
 export interface PreReleaseDependencies {
@@ -168,10 +182,11 @@ export async function getPreReleaseDependencies(
         }
     }
 
+    const isEmpty = prereleaseGroups.size === 0 && prereleasePackages.size === 0;
     return {
         releaseGroups: [...prereleaseGroups],
         packages: [...prereleasePackages],
-        isEmpty: prereleaseGroups.size > 0 || prereleasePackages.size > 0,
+        isEmpty,
     };
 }
 

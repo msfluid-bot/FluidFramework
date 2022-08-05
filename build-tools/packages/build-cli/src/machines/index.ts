@@ -3,4 +3,17 @@
  * Licensed under the MIT License.
  */
 
-export { StateMachine, StateHandler, ReleaseMachine, PrepReleaseMachine } from "./machines";
+import { PrepReleaseMachine } from "./prepReleaseMachine";
+import { ReleaseMachine } from "./releaseMachine";
+
+export { PrepReleaseMachine } from "./prepReleaseMachine";
+export { ReleaseMachine } from "./releaseMachine";
+
+export { StateMachine, StateHandler } from "./machines";
+
+/**
+ * An array of all known machines. Intended for testing.
+ *
+ * @internal
+ * */
+export const allMachines = [ReleaseMachine, PrepReleaseMachine];

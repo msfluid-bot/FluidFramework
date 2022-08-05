@@ -58,6 +58,13 @@ export const stateDescriptions = new Map([
         "DoBumpReleasedDependencies",
         "Does a bump of all prerelease dependencies that have been released (by checking npm).",
     ],
+    ["PromptToCommitReleasedDepsBump", "Prompts to commit local bump changes manually."],
+    [
+        "CheckNoPrereleaseDependencies2",
+        "Succeeds if the release group has no dependencies on prerelease packages within the repo.",
+    ],
+    ["CheckShouldCommitReleasedDepsBump", "Succeeds if local deps bumps should be committed."],
+    ["PromptToPRReleasedDepsBump", "Prompts to create a bump PR from the current branch."],
 ]);
 
 /**

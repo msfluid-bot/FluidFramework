@@ -16,3 +16,4 @@ export {
     npmCheckUpdates,
     PreReleaseDependencies,
 } from "./package";
+export { difference } from "./sets";

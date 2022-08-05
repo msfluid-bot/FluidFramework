@@ -31,6 +31,9 @@ export function bumpReleaseGroup(bumpType: VersionChangeType, releaseGroupOrPack
 // @public
 export function createBumpBranch(context: Context, releaseGroup: ReleaseGroup, bumpType: VersionBumpType): Promise<string>;
 
+// @public (undocumented)
+export function difference<T>(setA: Set<T>, setB: Set<T>): Set<T>;
+
 // @public
 export function getPreReleaseDependencies(context: Context, releaseGroup: ReleaseGroup | ReleasePackage): Promise<PreReleaseDependencies>;
 
@@ -38,7 +41,10 @@ export function getPreReleaseDependencies(context: Context, releaseGroup: Releas
 export function isReleased(context: Context, releaseGroup: MonoRepo | Package | string): Promise<boolean>;
 
 // @public
-export function npmCheckUpdates(context: Context, releaseGroup: ReleaseGroup, depsToUpdate: ReleasePackage[] | RegExp[], bumpType: "patch" | "minor" | "current", prerelease?: boolean, writeChanges?: boolean, log?: Logger | undefined): Promise<Package[]>;
+export function npmCheckUpdates(context: Context, releaseGroup: ReleaseGroup, depsToUpdate: ReleasePackage[] | RegExp[], bumpType: "patch" | "minor" | "current", prerelease?: boolean, writeChanges?: boolean, log?: Logger | undefined): Promise<{
+    updatedPackages: Package[];
+    updatedDependencies: Package[];
+}>;
 
 // @public
 export interface PackageWithRangeSpec {
