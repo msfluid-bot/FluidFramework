@@ -48,7 +48,7 @@ export async function npmCheckUpdates(
     updatedPackages: Package[];
     updatedDependencies: Package[];
 }> {
-    log?.log(`Checking npm for package updates...`);
+    log?.info(`Checking npm for package updates...`);
     const monorepo = context.repo.releaseGroups.get(releaseGroup);
     if (monorepo === undefined) {
         throw new Error(`Can't find release group: ${releaseGroup}`);
@@ -60,7 +60,7 @@ export async function npmCheckUpdates(
     const upgradeLogLines = new Set<string>();
 
     for (const workspaceGlob of monorepo.workspaceGlobs) {
-        log?.logVerbose(`Checking packages in ${workspaceGlob}...`);
+        log?.verbose(`Checking packages in ${workspaceGlob}...`);
         // eslint-disable-next-line no-await-in-loop
         const result = (await ncu({
             filter: depsToUpdate,
@@ -86,7 +86,7 @@ export async function npmCheckUpdates(
             const { name } = await readJsonAsync(jsonPath);
             const pkg = context.fullPackageMap.get(name);
             if (pkg === undefined) {
-                log?.logWarning(`Package not found in context: ${name}`);
+                log?.warning(`Package not found in context: ${name}`);
                 continue;
             }
 
@@ -101,9 +101,9 @@ export async function npmCheckUpdates(
         }
     }
 
-    log?.log(`${upgradeLogLines.size} released dependencies found on npm:`);
+    log?.info(`${upgradeLogLines.size} released dependencies found on npm:`);
     for (const line of upgradeLogLines.values()) {
-        log?.log(line);
+        log?.info(line);
     }
 
     const updatedDependencies: Package[] = getPackagesFromReleasePackages(context, [...deps]);

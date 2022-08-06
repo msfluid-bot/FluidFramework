@@ -31,6 +31,9 @@ export interface PackageWithRangeSpec {
  * value. If it is a bump type, the dependency range will be bumped according to that type.
  * @param prerelease - If true, will bump to the next pre-release version given the bump type.
  * @param onlyBumpPrerelease - If true, only dependencies on pre-release packages will be bumped.
+ * @param updateWithinSameReleaseGroup - If true, will update dependency ranges of deps within the same release group.
+ * Generally this should be false, but in some cases you may need to set a precise dependency range string within the
+ * same release group.
  * @param changedVersions - If provided, the changed packages will be put into this {@link VersionBag}.
  * @returns True if the packages dependencies were changed; false otherwise.
  */
@@ -40,40 +43,42 @@ export async function bumpPackageDependencies(
     bumpPackageMap: Map<string, PackageWithRangeSpec>,
     prerelease: boolean,
     onlyBumpPrerelease: boolean,
-    changedVersions?: VersionBag,
+    // eslint-disable-next-line default-param-last
     updateWithinSameReleaseGroup = false,
+    changedVersions?: VersionBag,
 ) {
     let changed = false;
     let newRangeString: string;
     for (const { name, dev } of pkg.combinedDependencies) {
         const dep = bumpPackageMap.get(name);
-        if (
-            dep !== undefined &&
-            !updateWithinSameReleaseGroup &&
-            // ignore dependencies that are a part of the same release group (monorepo)
-            !MonoRepo.isSame(dep.pkg.monoRepo, pkg.monoRepo)
-        ) {
-            const dependencies = dev
-                ? pkg.packageJson.devDependencies
-                : pkg.packageJson.dependencies;
-            const verString = dependencies[name];
-            const depIsPrerelease = (semver.minVersion(verString)?.prerelease?.length ?? 0) > 0;
+        if (dep !== undefined) {
+            const isSameReleaseGroup = MonoRepo.isSame(dep?.pkg.monoRepo, pkg.monoRepo);
+            if (!isSameReleaseGroup || (updateWithinSameReleaseGroup && isSameReleaseGroup)) {
+                const dependencies = dev
+                    ? pkg.packageJson.devDependencies
+                    : pkg.packageJson.dependencies;
+                const verString = dependencies[name];
+                const depIsPrerelease = (semver.minVersion(verString)?.prerelease?.length ?? 0) > 0;
 
-            const depNewRangeOrBumpType = dep.rangeOrBumpType;
-            // eslint-disable-next-line unicorn/prefer-ternary
-            if (isVersionBumpTypeExtended(depNewRangeOrBumpType)) {
-                // bump the current range string
-                newRangeString = bumpRange(verString, depNewRangeOrBumpType, prerelease);
-            } else {
-                newRangeString = depNewRangeOrBumpType;
-            }
+                const depNewRangeOrBumpType = dep.rangeOrBumpType;
+                // eslint-disable-next-line unicorn/prefer-ternary
+                if (isVersionBumpTypeExtended(depNewRangeOrBumpType)) {
+                    // bump the current range string
+                    newRangeString = bumpRange(verString, depNewRangeOrBumpType, prerelease);
+                } else {
+                    newRangeString = depNewRangeOrBumpType;
+                }
 
-            // If we're only bumping prereleases, check if the dep is a pre-release. Otherwise bump all packages whose
-            // range doesn't match the current value.
-            if ((onlyBumpPrerelease && depIsPrerelease) || dependencies[name] !== newRangeString) {
-                changed = true;
-                dependencies[name] = newRangeString;
-                changedVersions?.add(dep.pkg, newRangeString);
+                // If we're only bumping prereleases, check if the dep is a pre-release. Otherwise bump all packages
+                // whose range doesn't match the current value.
+                if (
+                    (onlyBumpPrerelease && depIsPrerelease) ||
+                    dependencies[name] !== newRangeString
+                ) {
+                    changed = true;
+                    dependencies[name] = newRangeString;
+                    changedVersions?.add(dep.pkg, newRangeString);
+                }
             }
         }
     }
@@ -118,9 +123,9 @@ export async function bumpReleaseGroup(
     const results = await exec(cmd, workingDir, `Error bumping ${releaseGroupOrPackage}`);
     context.repo.reload();
 
-    console.log(scheme);
+    // the lerna version command sets the dependency range of managed packages to a caret (^) dependency range. However,
+    // for the internal version scheme, the range needs to be a >= < range.
     if (scheme === "internal") {
-        console.log(`HERE`);
         const range = getVersionRange(translatedVersion, "^");
         if (releaseGroupOrPackage instanceof MonoRepo) {
             const packagesToCheckAndUpdate = releaseGroupOrPackage.packages;
@@ -129,31 +134,16 @@ export async function bumpReleaseGroup(
                 packageNewVersionMap.set(pkg.name, { pkg, rangeOrBumpType: range });
             }
 
-            const changedPackages = new VersionBag();
             for (const pkg of packagesToCheckAndUpdate) {
-                console.log(chalk.green(`bumping deps of ${pkg.nameColored}`));
                 // eslint-disable-next-line no-await-in-loop
                 await bumpPackageDependencies(
                     pkg,
                     packageNewVersionMap,
                     /* prerelease */ false,
                     /* onlyBumpPrerelease */ false,
-                    changedPackages,
                     /* updateWithinSameReleaseGroup */ true,
                 );
-                console.log(chalk.green(`changedPackages size: ${changedPackages.size}`));
             }
-
-            console.log(chalk.green(`FINAL changedPackages size: ${changedPackages.size}`));
-
-            // await DepsCommand.run([
-            //     releaseGroupOrPackage.kind,
-            //     "--version",
-            //     range,
-            //     "--releaseGroup",
-            //     releaseGroupOrPackage.kind,
-            //     "-x",
-            // ]);
         }
     }
 

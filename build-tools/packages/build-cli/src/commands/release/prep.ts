@@ -10,12 +10,12 @@ import {
     detectVersionScheme,
     VersionBumpType,
 } from "@fluid-tools/version-tools";
-import { FluidRepo } from "@fluidframework/build-tools";
 import { bumpTypeFlag, releaseGroupFlag } from "../../flags";
 import { CommandWithChecks } from "../../base";
 import { PrepReleaseMachine } from "../../machines";
 import { bumpBranchName, bumpReleaseGroup, releaseBranchName } from "../../lib";
 import { ReleaseGroup } from "../../releaseGroups";
+import { FluidRepo } from "@fluidframework/build-tools";
 
 // WARNING: This command is a work in progress!!!
 
@@ -59,7 +59,7 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
     shouldCommit = true;
     bumpType = "minor" as VersionBumpType;
     checkBranchName(name: string): boolean {
-        this.logVerbose(`Checking if ${name} is 'main', 'next', or 'lts'.`);
+        this.verbose(`Checking if ${name} is 'main', 'next', or 'lts'.`);
         return ["main", "next", "lts"].includes(name);
     }
 
@@ -78,7 +78,7 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
 
                 const commit = await context.gitRepo.getShaForBranch(releaseBranch);
                 if (commit !== undefined) {
-                    this.logError(`${releaseBranch} already exists`);
+                    this.errorLog(`${releaseBranch} already exists`);
                     this.machine.action("failure");
                 }
 
@@ -95,7 +95,7 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
                 // this.log(`Installing build-tools so we can run build:genver`);
                 // const ret = await buildToolsMonoRepo.install();
                 // if (ret.error) {
-                //     this.logError("Install failed.");
+                //     this.errorLog("Install failed.");
                 //     this.machine.action("failure");
                 // }
 
@@ -113,14 +113,14 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
                 );
                 assert(this.bumpType === "minor", `Bump type is ${this.bumpType}; expected minor.`);
                 const bumpResults = await bumpReleaseGroup(context, this.bumpType, rgRepo, scheme);
-                this.logVerbose(`Raw bump results:`);
-                this.logVerbose(bumpResults);
+                this.verbose(`Raw bump results:`);
+                this.verbose(bumpResults);
 
-                // TODO: Re-enable this
-                // if (!(await FluidRepo.ensureInstalled(rgRepo.packages, false))) {
-                //     this.logError("Install failed.");
-                //     this.machine.action("failure");
-                // }
+                // TODO: temp disable
+                if (!(await FluidRepo.ensureInstalled(rgRepo.packages, false))) {
+                    this.errorLog("Install failed.");
+                    this.machine.action("failure");
+                }
 
                 this.machine.action("success");
                 break;
@@ -213,9 +213,4 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
         this.releaseGroup = this.processedFlags.releaseGroup!;
         this.releaseVersion = context.repo.releaseGroups.get(this.releaseGroup)!.version;
     }
-
-    // async run(): Promise<void> {
-    //     // await this.init();
-    //     await this.stateLoop();
-    // }
 }

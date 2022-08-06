@@ -110,15 +110,15 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
     protected async getLogger(): Promise<Logger> {
         if (this._logger === undefined) {
             this._logger = {
-                log: (msg: string | Error) => {
+                info: (msg: string | Error) => {
                     this.log(msg.toString());
                 },
-                logWarning: this.logWarning.bind(this),
-                logError: (msg: string | Error) => {
+                warning: this.warning.bind(this),
+                error: (msg: string | Error) => {
                     this.error(msg);
                 },
-                logVerbose: (msg: string | Error) => {
-                    this.logVerbose(msg);
+                verbose: (msg: string | Error) => {
+                    this.verbose(msg);
                 },
             };
         }
@@ -139,8 +139,8 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
             const branch = await gitRepo.getCurrentBranchName();
             const logger = await this.getLogger();
 
-            this.logVerbose(`Repo: ${resolvedRoot}`);
-            this.logVerbose(`Branch: ${branch}`);
+            this.verbose(`Repo: ${resolvedRoot}`);
+            this.verbose(`Branch: ${branch}`);
 
             this._context = new Context(
                 gitRepo,
@@ -160,19 +160,23 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
 
     /** Log a message with an indent. */
     public logIndent(input: string, indent = 2) {
-        this.log(`${" ".repeat(indent)}${input}`);
+        this.log(`${this.indent(indent)}${input}`);
     }
 
-    public logError(message: string | Error) {
+    public indent(indent = 2): string {
+        return " ".repeat(indent);
+    }
+
+    public errorLog(message: string | Error) {
         this.log(chalk.red(`ERROR: ${message}`));
     }
 
-    public logWarning(message: string | Error): string | Error {
+    public warning(message: string | Error): string | Error {
         this.log(chalk.yellow(`WARNING: ${message}`));
         return message;
     }
 
-    public logVerbose(message: string | Error): string | Error {
+    public verbose(message: string | Error): string | Error {
         if (this.baseFlags.verbose === true) {
             if (typeof message === "string") {
                 this.log(chalk.grey(`VERBOSE: ${message}`));
@@ -209,21 +213,21 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
             if (this.machine.state_is_terminal(state)) {
                 this.machine.hook_entry(state, (o: any) => {
                     const { from, action } = o;
-                    this.logVerbose(`${state}: ${action} from ${from}`);
+                    this.verbose(`${state}: ${action} from ${from}`);
                 });
             }
         }
 
         this.machine.hook_any_transition((t: any) => {
             const { action, from, to } = t;
-            this.logVerbose(`STATE MACHINE: ${from} [${action}] ==> ${to}`);
+            this.verbose(`STATE MACHINE: ${from} [${action}] ==> ${to}`);
         });
     }
 
     async handleState(state: string): Promise<boolean> {
         switch (state) {
             case "Failed": {
-                this.logVerbose("Failed state!");
+                this.verbose("Failed state!");
                 this.exit();
                 return true;
             }
@@ -249,7 +253,6 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
     }
 
     async run(): Promise<void> {
-        // await this.init();
         await this.stateLoop();
     }
 }
@@ -314,7 +317,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
         this.machine.hook_exit("Init", (o: any) => {
             const { action } = o;
             if (action === "failure") {
-                this.logWarning(`Skipping ALL CHECKS! Be sure you know what you are doing!`);
+                this.warning(`Skipping ALL CHECKS! Be sure you know what you are doing!`);
             }
         });
     }
@@ -353,11 +356,11 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
             case "CheckPolicy": {
                 // TODO: run policy check before releasing a version.
                 if (this.shouldCheckPolicy) {
-                    this.logWarning(chalk.red(`Automated policy check not yet implemented.`));
-                    this.logWarning(`Run policy check manually and check in all fixes.`);
+                    this.warning(chalk.red(`Automated policy check not yet implemented.`));
+                    this.warning(`Run policy check manually and check in all fixes.`);
                     // await runPolicyCheckWithFix(context);
                 } else {
-                    this.logWarning("Skipping policy check.");
+                    this.warning("Skipping policy check.");
                 }
 
                 this.machine.action("success");
@@ -367,11 +370,11 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
             case "CheckBranchName": {
                 if (this.shouldCheckBranch) {
                     if (!this.checkBranchName(context.originalBranchName)) {
-                        this.logError(this.checkBranchNameErrorMessage);
+                        this.errorLog(this.checkBranchNameErrorMessage);
                         this.machine.action("failure");
                     }
                 } else {
-                    this.logWarning(
+                    this.warning(
                         `Not checking if current branch is a release branch: ${context.originalBranchName}`,
                     );
                 }
@@ -384,7 +387,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 const remote = await context.gitRepo.getRemote(context.originRemotePartialUrl);
                 if (remote === undefined) {
                     this.machine.action("failure");
-                    this.logError(`Unable to find remote for '${context.originRemotePartialUrl}'`);
+                    this.errorLog(`Unable to find remote for '${context.originRemotePartialUrl}'`);
                 }
 
                 this.machine.action("success");
@@ -400,14 +403,14 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 if (this.shouldCheckBranchUpdate) {
                     if (!isBranchUpToDate) {
                         this.machine.action("failure");
-                        this.logError(
+                        this.errorLog(
                             `Local '${context.originalBranchName}' branch not up to date with remote. Please pull from '${remote}'.`,
                         );
                     }
 
                     this.machine.action("success");
                 } else {
-                    this.logWarning("Not checking if the branch is up-to-date with the remote.");
+                    this.warning("Not checking if the branch is up-to-date with the remote.");
                     this.machine.action("success");
                 }
 
@@ -481,7 +484,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                     }
                 }
 
-                // this.logVerbose(`npmCheckUpdates: Updated ${upgrades.length} packages.`);
+                // this.verbose(`npmCheckUpdates: Updated ${upgrades.length} packages.`);
                 const remainingReleaseGroupsToBump = difference(
                     new Set(releaseGroups.map((rg) => rg.toString())),
                     updatedReleaseGroups,
@@ -512,7 +515,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
 
                 // if (await FluidRepo.ensureInstalled(updatedPackages)) {
                 // } else {
-                //     this.logError("Install failed.");
+                //     this.errorLog("Install failed.");
                 //     this.machine.force_transition("Failed");
                 // }
                 this.machine.action("success");
@@ -525,7 +528,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 const commit = await context.gitRepo.getShaForBranch(releaseBranch);
                 if (commit !== undefined) {
                     this.machine.action("failure");
-                    this.logError(`${releaseBranch} already exists`);
+                    this.errorLog(`${releaseBranch} already exists`);
                 }
 
                 this.machine.action("success");
@@ -560,12 +563,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                     this.bumpType,
                 );
 
-                this.logVerbose(`Created bump branch: ${bumpBranchName}`);
-                this.log(
-                    `BUMP: (${this.bumpType}): bumping ${chalk.blue(
-                        this.bumpType,
-                    )} version to ${newVersion}`,
-                );
+                this.verbose(`Created bump branch: ${bumpBranchName}`);
 
                 const commitMsg = `[bump] ${this.releaseGroup}: ${version} => ${newVersion} (${this.bumpType})`;
                 await context.gitRepo.commit(commitMsg, `Error committing to ${bumpBranchName}`);
@@ -582,7 +580,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                 const branchName = bumpDepsBranchName(this.releaseGroup, "releasedDeps");
                 await context.gitRepo.createBranch(branchName);
 
-                this.logVerbose(`Created bump branch: ${branchName}`);
+                this.verbose(`Created bump branch: ${branchName}`);
                 this.log(
                     `BUMP: ${this.releaseGroup}: Bumped prerelease dependencies to release versions.`,
                 );

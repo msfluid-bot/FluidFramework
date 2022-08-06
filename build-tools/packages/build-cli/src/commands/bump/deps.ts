@@ -182,6 +182,7 @@ export default class DepsCommand extends BaseCommand<typeof DepsCommand.flags> {
                 packageNewVersionMap,
                 flags.prerelease,
                 flags.onlyBumpPrerelease,
+                /* updateWithinSameReleaseGroup */ false,
                 changedPackages,
             );
         }
@@ -192,7 +193,7 @@ export default class DepsCommand extends BaseCommand<typeof DepsCommand.flags> {
                     this.error("Install failed.");
                 }
             } else {
-                this.logWarning(`Skipping installation. Lockfiles might be outdated.`);
+                this.warning(`Skipping installation. Lockfiles might be outdated.`);
             }
 
             const changedVersionsString: string[] = [];
@@ -216,7 +217,7 @@ export default class DepsCommand extends BaseCommand<typeof DepsCommand.flags> {
                     `You can now create a PR for branch ${bumpBranch} targeting ${context.originalBranchName}`,
                 );
             } else {
-                this.logWarning(`Skipping commit. You'll need to manually commit changes.`);
+                this.warning(`Skipping commit. You'll need to manually commit changes.`);
             }
 
             this.finalMessages.push(

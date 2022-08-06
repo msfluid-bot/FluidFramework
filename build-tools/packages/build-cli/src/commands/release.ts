@@ -57,7 +57,7 @@ export default class ReleaseCommand extends CommandWithChecks<typeof ReleaseComm
     bumpType = "patch" as VersionBumpType;
 
     checkBranchName(name: string): boolean {
-        this.logVerbose(`Checking if ${name} starts with release/`);
+        this.verbose(`Checking if ${name} starts with release/`);
         return name.startsWith("release/");
     }
 
@@ -73,7 +73,7 @@ export default class ReleaseCommand extends CommandWithChecks<typeof ReleaseComm
         switch (state) {
             case "DoReleaseGroupBumpPatch": {
                 if (!isReleaseGroup(this.releaseGroup)) {
-                    this.logError(`Expected a release group: ${this.releaseGroup}`);
+                    this.errorLog(`Expected a release group: ${this.releaseGroup}`);
                     this.machine.action("failure");
                     break;
                 }
