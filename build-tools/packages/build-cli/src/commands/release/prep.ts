@@ -3,13 +3,14 @@
  * Licensed under the MIT License.
  */
 
+import { strict as assert } from "assert";
 import chalk from "chalk";
 import {
     bumpVersionScheme,
     detectVersionScheme,
     VersionBumpType,
 } from "@fluid-tools/version-tools";
-import { FluidRepo, MonoRepoKind } from "@fluidframework/build-tools";
+import { FluidRepo } from "@fluidframework/build-tools";
 import { bumpTypeFlag, releaseGroupFlag } from "../../flags";
 import { CommandWithChecks } from "../../base";
 import { PrepReleaseMachine } from "../../machines";
@@ -71,25 +72,6 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
         let localHandled = true;
 
         switch (state) {
-            case "PromptToCommitBump": {
-                this.log(
-                    `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
-                );
-                this.log(
-                    `\nAfter the PR is merged, then the release of ${this.releaseGroup} is complete!`,
-                );
-                this.exit();
-                break;
-            }
-
-            case "PromptToCommitDeps": {
-                this.log(
-                    `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
-                );
-                this.exit();
-                break;
-            }
-
             case "CheckReleaseBranch": {
                 // Check release branch
                 const releaseBranch = releaseBranchName(this.releaseGroup!, this.releaseVersion!);
@@ -105,16 +87,19 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
             }
 
             case "CheckInstallBuildTools": {
-                // Make sure everything is installed (so that we can do build:genver)
-                const buildToolsMonoRepo = context.repo.releaseGroups.get(MonoRepoKind.BuildTools)!;
-                this.log(`Installing build-tools so we can run build:genver`);
-                const ret = await buildToolsMonoRepo.install();
-                if (ret.error) {
-                    this.logError("Install failed.");
-                    this.machine.action("failure");
-                }
-
+                // TODO temporary
                 this.machine.action("success");
+
+                // Make sure everything is installed (so that we can do build:genver)
+                // const buildToolsMonoRepo = context.repo.releaseGroups.get(MonoRepoKind.BuildTools)!;
+                // this.log(`Installing build-tools so we can run build:genver`);
+                // const ret = await buildToolsMonoRepo.install();
+                // if (ret.error) {
+                //     this.logError("Install failed.");
+                //     this.machine.action("failure");
+                // }
+
+                // this.machine.action("success");
                 break;
             }
 
@@ -126,14 +111,16 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
                 this.log(
                     `Release bump: bumping ${chalk.blue(this.bumpType)} version to ${newVersion}`,
                 );
-                const bumpResults = await bumpReleaseGroup(this.bumpType, rgRepo, scheme);
+                assert(this.bumpType === "minor", `Bump type is ${this.bumpType}; expected minor.`);
+                const bumpResults = await bumpReleaseGroup(context, this.bumpType, rgRepo, scheme);
                 this.logVerbose(`Raw bump results:`);
                 this.logVerbose(bumpResults);
 
-                if (!(await FluidRepo.ensureInstalled(rgRepo.packages, false))) {
-                    this.logError("Install failed.");
-                    this.machine.action("failure");
-                }
+                // TODO: Re-enable this
+                // if (!(await FluidRepo.ensureInstalled(rgRepo.packages, false))) {
+                //     this.logError("Install failed.");
+                //     this.machine.action("failure");
+                // }
 
                 this.machine.action("success");
                 break;
@@ -188,6 +175,24 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
                 break;
             }
 
+            case "PromptToPRReleasedDepsBump": {
+                const cmd = `${this.config.bin} ${this.id} -g ${this.releaseGroup} -t ${this.bumpType}`;
+
+                this.logHr();
+                this.log(
+                    `\nPlease push and create a PR for branch '${await context.gitRepo.getCurrentBranchName()}' targeting the '${
+                        context.originalBranchName
+                    }' branch.`,
+                );
+                this.log(
+                    `\nAfter the PR is merged, run the following command to continue the release:`,
+                );
+                this.log();
+                this.logIndent(chalk.whiteBright(`${cmd}\n`));
+                this.exit();
+                break;
+            }
+
             default: {
                 localHandled = false;
             }
@@ -209,8 +214,8 @@ export default class PrepCommand extends CommandWithChecks<typeof PrepCommand.fl
         this.releaseVersion = context.repo.releaseGroups.get(this.releaseGroup)!.version;
     }
 
-    async run(): Promise<void> {
-        // await this.init();
-        await this.stateLoop();
-    }
+    // async run(): Promise<void> {
+    //     // await this.init();
+    //     await this.stateLoop();
+    // }
 }

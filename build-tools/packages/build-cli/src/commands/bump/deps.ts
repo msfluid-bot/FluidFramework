@@ -11,12 +11,7 @@ import chalk from "chalk";
 import * as semver from "semver";
 import { BaseCommand } from "../../base";
 import { bumpTypeExtendedFlag, releaseGroupFlag, semverRangeFlag } from "../../flags";
-import {
-    bumpBranchName,
-    bumpDepsBranchName,
-    bumpPackageDependencies,
-    PackageWithRangeSpec,
-} from "../../lib";
+import { bumpDepsBranchName, bumpPackageDependencies, PackageWithRangeSpec } from "../../lib";
 
 /**
  * Update the dependency version of a specified package or release group. That is, if one or more packages in the repo

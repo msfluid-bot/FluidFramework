@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import { exec, MonoRepo, Package, VersionBag } from "@fluidframework/build-tools";
+import { Context, exec, MonoRepo, Package, VersionBag } from "@fluidframework/build-tools";
 import {
     bumpVersionScheme,
     bumpRange,
@@ -11,9 +11,10 @@ import {
     isVersionBumpTypeExtended,
     VersionChangeType,
     VersionScheme,
+    getVersionRange,
 } from "@fluid-tools/version-tools";
 import * as semver from "semver";
-import { ReleaseGroup } from "../releaseGroups";
+import chalk from "chalk";
 
 /** A mapping of {@link Package} to a version range string or a bump type. This interface is used for convenience. */
 export interface PackageWithRangeSpec {
@@ -40,6 +41,7 @@ export async function bumpPackageDependencies(
     prerelease: boolean,
     onlyBumpPrerelease: boolean,
     changedVersions?: VersionBag,
+    updateWithinSameReleaseGroup = false,
 ) {
     let changed = false;
     let newRangeString: string;
@@ -47,6 +49,7 @@ export async function bumpPackageDependencies(
         const dep = bumpPackageMap.get(name);
         if (
             dep !== undefined &&
+            !updateWithinSameReleaseGroup &&
             // ignore dependencies that are a part of the same release group (monorepo)
             !MonoRepo.isSame(dep.pkg.monoRepo, pkg.monoRepo)
         ) {
@@ -90,6 +93,7 @@ export async function bumpPackageDependencies(
  * @param scheme - The version scheme to use.
  */
 export async function bumpReleaseGroup(
+    context: Context,
     bumpType: VersionChangeType,
     releaseGroupOrPackage: MonoRepo | Package,
     scheme: VersionScheme,
@@ -111,5 +115,47 @@ export async function bumpReleaseGroup(
         }
     }
 
-    return exec(cmd, workingDir, `Error bumping ${releaseGroupOrPackage}`);
+    const results = await exec(cmd, workingDir, `Error bumping ${releaseGroupOrPackage}`);
+    context.repo.reload();
+
+    console.log(scheme);
+    if (scheme === "internal") {
+        console.log(`HERE`);
+        const range = getVersionRange(translatedVersion, "^");
+        if (releaseGroupOrPackage instanceof MonoRepo) {
+            const packagesToCheckAndUpdate = releaseGroupOrPackage.packages;
+            const packageNewVersionMap = new Map<string, PackageWithRangeSpec>();
+            for (const pkg of packagesToCheckAndUpdate) {
+                packageNewVersionMap.set(pkg.name, { pkg, rangeOrBumpType: range });
+            }
+
+            const changedPackages = new VersionBag();
+            for (const pkg of packagesToCheckAndUpdate) {
+                console.log(chalk.green(`bumping deps of ${pkg.nameColored}`));
+                // eslint-disable-next-line no-await-in-loop
+                await bumpPackageDependencies(
+                    pkg,
+                    packageNewVersionMap,
+                    /* prerelease */ false,
+                    /* onlyBumpPrerelease */ false,
+                    changedPackages,
+                    /* updateWithinSameReleaseGroup */ true,
+                );
+                console.log(chalk.green(`changedPackages size: ${changedPackages.size}`));
+            }
+
+            console.log(chalk.green(`FINAL changedPackages size: ${changedPackages.size}`));
+
+            // await DepsCommand.run([
+            //     releaseGroupOrPackage.kind,
+            //     "--version",
+            //     range,
+            //     "--releaseGroup",
+            //     releaseGroupOrPackage.kind,
+            //     "-x",
+            // ]);
+        }
+    }
+
+    return results;
 }

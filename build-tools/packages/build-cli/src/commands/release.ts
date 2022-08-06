@@ -81,6 +81,7 @@ export default class ReleaseCommand extends CommandWithChecks<typeof ReleaseComm
                 const releaseGroupRepo = context.repo.releaseGroups.get(this.releaseGroup)!;
                 // Since the release group is released, bump it to the next patch version.
                 await bumpReleaseGroup(
+                    context,
                     "patch",
                     releaseGroupRepo,
                     this.processedFlags.versionScheme!,
@@ -116,25 +117,6 @@ export default class ReleaseCommand extends CommandWithChecks<typeof ReleaseComm
                     `\nAfter the PR is merged, run the following command to continue the release:`,
                 );
                 this.logIndent(chalk.whiteBright(`\n${cmd}`));
-                this.exit();
-                break;
-            }
-
-            case "PromptToCommitBump": {
-                this.log(
-                    `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
-                );
-                this.log(
-                    `\nAfter the PR is merged, then the release of ${this.releaseGroup} is complete!`,
-                );
-                this.exit();
-                break;
-            }
-
-            case "PromptToCommitDeps": {
-                this.log(
-                    `Commit the local changes and create a PR targeting the ${context.originalBranchName} branch.`,
-                );
                 this.exit();
                 break;
             }

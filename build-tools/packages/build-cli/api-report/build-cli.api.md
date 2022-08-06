@@ -23,10 +23,10 @@ export function bumpBranchName(releaseGroup: ReleaseGroup, bumpType: VersionBump
 export function bumpDepsBranchName(bumpedDep: ReleaseGroup | ReleasePackage, bumpType: VersionBumpTypeExtended | string, releaseGroup?: ReleaseGroup): string;
 
 // @public
-export function bumpPackageDependencies(pkg: Package, bumpPackageMap: Map<string, PackageWithRangeSpec>, prerelease: boolean, onlyBumpPrerelease: boolean, changedVersions?: VersionBag): Promise<boolean>;
+export function bumpPackageDependencies(pkg: Package, bumpPackageMap: Map<string, PackageWithRangeSpec>, prerelease: boolean, onlyBumpPrerelease: boolean, changedVersions?: VersionBag, updateWithinSameReleaseGroup?: boolean): Promise<boolean>;
 
 // @public
-export function bumpReleaseGroup(bumpType: VersionChangeType, releaseGroupOrPackage: MonoRepo | Package, scheme: VersionScheme): Promise<string>;
+export function bumpReleaseGroup(context: Context, bumpType: VersionChangeType, releaseGroupOrPackage: MonoRepo | Package, scheme: VersionScheme): Promise<string>;
 
 // @public
 export function createBumpBranch(context: Context, releaseGroup: ReleaseGroup, bumpType: VersionBumpType): Promise<string>;

@@ -101,7 +101,7 @@ export async function npmCheckUpdates(
         }
     }
 
-    log?.log(`${upgradeLogLines.size} dependencies updated from npm:`);
+    log?.log(`${upgradeLogLines.size} released dependencies found on npm:`);
     for (const line of upgradeLogLines.values()) {
         log?.log(line);
     }

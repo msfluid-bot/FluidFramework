@@ -28,6 +28,7 @@
                 "-v",
                 // "--no-branchCheck",
                 // "--no-updateCheck",
+                "--no-commit",
             ],
             "cwd": "/home/tylerbu/code/build-test-fluid",
             "env": {

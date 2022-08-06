@@ -8,7 +8,7 @@
 import { assert } from "chai";
 import { difference } from "../src/lib/sets";
 import { actionDescriptions, stateDescriptions } from "../src/machines/descriptions";
-import { allMachines, PrepReleaseMachine, ReleaseMachine } from "../src/machines/machines";
+import { allMachines, PrepReleaseMachine, ReleaseMachine } from "../src/machines";
 
 describe("ReleaseMachine", () => {
     const machine = ReleaseMachine;

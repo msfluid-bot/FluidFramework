@@ -15,61 +15,71 @@ import { StateMachine } from "./machines";
  */
 
 export const ReleaseMachineDefinition = sm`
- machine_name: "Fluid Release Process";
+machine_name: "Fluid Release Process";
 
- Init 'success'
- => CheckShouldRunChecks 'success'
- => CheckValidReleaseGroup 'success'
- => CheckPolicy 'success'
- => CheckBranchName 'success'
- => CheckHasRemote 'success'
- => CheckBranchUpToDate 'success'
- => CheckNoPrereleaseDependencies 'success'
- => CheckIfCurrentReleaseGroupIsReleased 'success'
- => DoReleaseGroupBumpPatch 'success'
- => CheckShouldCommitBump 'success'
- => PromptToPRBump;
+Init 'success'
+=> CheckShouldRunChecks 'success'
+=> CheckValidReleaseGroup 'success'
+=> CheckPolicy 'success'
+=> CheckBranchName 'success'
+=> CheckHasRemote 'success'
+=> CheckBranchUpToDate 'success'
+=> CheckNoPrereleaseDependencies 'success'
+=> CheckIfCurrentReleaseGroupIsReleased 'success'
+=> DoReleaseGroupBumpPatch 'success'
+=> CheckShouldCommitBump 'success'
+=> PromptToPRBump;
 
- CheckShouldRunChecks 'failure'
- => CheckNoPrereleaseDependencies;
+CheckShouldRunChecks 'failure'
+=> CheckNoPrereleaseDependencies;
 
- [
- CheckValidReleaseGroup
- CheckPolicy
- CheckBranchName
- CheckHasRemote
- CheckBranchUpToDate
- DoReleaseGroupBumpPatch
- ] 'failure' => Failed;
+[
+CheckValidReleaseGroup
+CheckPolicy
+CheckBranchName
+CheckHasRemote
+CheckBranchUpToDate
+DoReleaseGroupBumpPatch
+] 'failure' => Failed;
 
- CheckNoPrereleaseDependencies 'failure'
- => DoBumpReleasedDependencies 'success'
- => CheckNoMorePrereleaseDependencies 'success'
- => CheckShouldCommitDeps 'success'
- => PromptToPRDeps;
+CheckNoPrereleaseDependencies 'failure'
+// for DoBumpReleasedDependencies, success means that there were none to bump
+// failure means there were bumps and thus local changes that need to be merged
+=> DoBumpReleasedDependencies 'success'
+=> CheckNoMorePrereleaseDependencies 'success'
+=> CheckShouldCommitDeps 'success'
+=> PromptToPRDeps;
 
- CheckNoMorePrereleaseDependencies 'failure'
- => PromptToReleaseDeps;
+DoBumpReleasedDependencies 'failure'
+=> CheckNoPrereleaseDependencies2 'failure'
+=> PromptToReleaseDeps;
 
- CheckShouldCommitBump 'failure'
- => PromptToCommitBump;
+CheckNoMorePrereleaseDependencies 'failure'
+=> PromptToReleaseDeps;
 
- CheckShouldCommitDeps 'failure'
- => PromptToCommitDeps;
+CheckNoPrereleaseDependencies2 'success'
+=> CheckShouldCommitReleasedDepsBump 'success'
+=> PromptToPRReleasedDepsBump;
 
- CheckIfCurrentReleaseGroupIsReleased 'failure'
- => PromptToRelease;
+CheckShouldCommitBump 'failure'
+=> PromptToCommitBump;
 
- // visual styling
- state DoReleaseGroupBumpPatch: {
-     background-color : steelblue;
-     text-color       : white;
- };
+CheckShouldCommitDeps 'failure'
+=> PromptToCommitDeps;
 
- state DoBumpReleasedDependencies: {
-     background-color : steelblue;
-     text-color       : white;
- };
+CheckIfCurrentReleaseGroupIsReleased 'failure'
+=> PromptToRelease;
+
+// visual styling
+state DoReleaseGroupBumpPatch: {
+    background-color : steelblue;
+    text-color       : white;
+};
+
+state DoBumpReleasedDependencies: {
+    background-color : steelblue;
+    text-color       : white;
+};
  `;
 
 /**
