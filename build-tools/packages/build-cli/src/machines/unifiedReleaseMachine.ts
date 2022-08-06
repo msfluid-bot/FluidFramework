@@ -16,12 +16,12 @@ import { StateMachine } from "./machines";
  */
 
 /**
- * An FSL state machine that encodes the Fluid release prep process.
+ * An FSL state machine that encodes the Fluid release process.
  *
  * @alpha
  */
-export const PrepReleaseMachineDefinition = sm`
- machine_name: "Fluid Release Prep Process";
+export const UnifiedReleaseMachineDefinition = sm`
+ machine_name: "Fluid Unified Release Process";
 
  Init 'success'
  => CheckShouldRunChecks 'success'
@@ -109,30 +109,9 @@ export const PrepReleaseMachineDefinition = sm`
  };
  `;
 
-export const PrepReleaseMachine: StateMachine = {
+export const UnifiedReleaseMachine: StateMachine = {
     knownActions: ["success", "failure"],
     knownStates: [
-        "Init",
-        "Failed",
-        "CheckBranchName",
-        "CheckBranchUpToDate",
-        "CheckHasRemote",
-        "CheckInstallBuildTools",
-        "CheckNoMorePrereleaseDependencies",
-        "CheckNoPrereleaseDependencies",
-        "CheckPolicy",
-        "CheckReleaseBranchDoesNotExist",
-        "CheckShouldCommitBump",
-        "CheckShouldCommitDeps",
-        "CheckShouldRunChecks",
-        "CheckValidReleaseGroup",
-        "DoBumpReleasedDependencies",
-        "DoReleaseGroupBumpMinor",
-        "PromptToCommitBump",
-        "PromptToCommitDeps",
-        "PromptToPRBump",
-        "PromptToPRDeps",
-        "PromptToReleaseDeps",
     ],
-    machine: PrepReleaseMachineDefinition,
+    machine: UnifiedReleaseMachineDefinition,
 };

@@ -105,9 +105,35 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
     }
 
     /**
+     * The repo {@link Context}. The context is retrieved and cached the first time this method is called. Subsequent
+     * calls will return the cached context.
+     *
+     * @returns The repo {@link Context}.
+     */
+    async getContext(): Promise<Context> {
+        if (this._context === undefined) {
+            const resolvedRoot = await getResolvedFluidRoot();
+            const gitRepo = new GitRepo(resolvedRoot);
+            const branch = await gitRepo.getCurrentBranchName();
+
+            this.verbose(`Repo: ${resolvedRoot}`);
+            this.verbose(`Branch: ${branch}`);
+
+            this._context = new Context(
+                gitRepo,
+                "github.com/microsoft/FluidFramework",
+                branch,
+                this.logger,
+            );
+        }
+
+        return this._context;
+    }
+
+    /**
      * @returns A default logger that can be passed to core functions enabling them to log using the command logging
      * system */
-    protected async getLogger(): Promise<Logger> {
+    protected get logger(): Logger {
         if (this._logger === undefined) {
             this._logger = {
                 info: (msg: string | Error) => {
@@ -126,32 +152,6 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
         return this._logger;
     }
 
-    /**
-     * The repo {@link Context}. The context is retrieved and cached the first time this method is called. Subsequent
-     * calls will return the cached context.
-     *
-     * @returns The repo {@link Context}.
-     */
-    async getContext(): Promise<Context> {
-        if (this._context === undefined) {
-            const resolvedRoot = await getResolvedFluidRoot();
-            const gitRepo = new GitRepo(resolvedRoot);
-            const branch = await gitRepo.getCurrentBranchName();
-            const logger = await this.getLogger();
-
-            this.verbose(`Repo: ${resolvedRoot}`);
-            this.verbose(`Branch: ${branch}`);
-
-            this._context = new Context(
-                gitRepo,
-                "github.com/microsoft/FluidFramework",
-                branch,
-                logger,
-            );
-        }
-
-        return this._context;
-    }
 
     /** Output a horizontal rule. */
     public logHr() {
@@ -194,8 +194,7 @@ export abstract class BaseCommand<T extends typeof BaseCommand.flags> extends Co
  */
 export abstract class StateMachineCommand<T extends typeof StateMachineCommand.flags>
     extends BaseCommand<T>
-    implements StateHandler
-{
+    implements StateHandler {
     static flags = {
         ...BaseCommand.flags,
     };
@@ -263,13 +262,12 @@ export abstract class StateMachineCommand<T extends typeof StateMachineCommand.f
 export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags>
     extends StateMachineCommand<T>
     implements
-        ChecksValidReleaseGroup,
-        ChecksPolicy,
-        ChecksBranchName,
-        ChecksBranchUpdate,
-        ChecksShouldCommit,
-        CheckSkipper
-{
+    ChecksValidReleaseGroup,
+    ChecksPolicy,
+    ChecksBranchName,
+    ChecksBranchUpdate,
+    ChecksShouldCommit,
+    CheckSkipper {
     static flags = {
         skipChecks: skipCheckFlag,
         ...checkFlags,
@@ -445,7 +443,6 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
 
             // case "CheckNoPrereleaseDependencies2":
             case "DoBumpReleasedDependencies": {
-                const logger = await this.getLogger();
                 const { releaseGroups, packages, isEmpty } = await getPreReleaseDependencies(
                     context,
                     this.releaseGroup!,
@@ -460,8 +457,7 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                     }
                 }
 
-                // First, update any prereleases that have released versions on npm
-                // let updatedPackages: Package[] = [];
+                // First, check if any prereleases have released versions on npm
                 let { updatedPackages, updatedDependencies } = await npmCheckUpdates(
                     context,
                     this.releaseGroup!,
@@ -469,13 +465,12 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                     "current",
                     /* prerelease */ true,
                     /* writeChanges */ false,
-                    logger,
+                    this.logger,
                 );
 
+                // Divide the updated dependencies into individual packages and release groups
                 const updatedReleaseGroups = new Set<string>();
                 const updatedDeps = new Set<string>();
-                // const remainingToBump = new Set<string>();
-
                 for (const p of updatedDependencies) {
                     if (p.monoRepo === undefined) {
                         updatedDeps.add(p.name);
@@ -484,17 +479,15 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                     }
                 }
 
-                // this.verbose(`npmCheckUpdates: Updated ${upgrades.length} packages.`);
                 const remainingReleaseGroupsToBump = difference(
                     new Set(releaseGroups.map((rg) => rg.toString())),
                     updatedReleaseGroups,
                 );
-
                 const remainingPackagesToBump = difference(new Set(packages), updatedDeps);
 
                 if (remainingReleaseGroupsToBump.size === 0 && remainingPackagesToBump.size === 0) {
                     // This is the same command as run above, but this time we write the changes. THere are more
-                    // efficient way to do this but this is simple.
+                    // efficient ways to do this but this is simple.
                     ({ updatedPackages, updatedDependencies } = await npmCheckUpdates(
                         context,
                         this.releaseGroup!,
@@ -502,7 +495,6 @@ export abstract class CommandWithChecks<T extends typeof CommandWithChecks.flags
                         "current",
                         /* prerelease */ true,
                         /* writeChanges */ true,
-                        // logger,
                     ));
                 }
 
