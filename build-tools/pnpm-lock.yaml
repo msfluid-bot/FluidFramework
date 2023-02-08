@@ -8,6 +8,7 @@ importers:
       '@commitlint/config-conventional': ^17.1.0
       '@commitlint/cz-commitlint': ^17.1.2
       '@fluidframework/test-tools': ^0.2.3074
+      '@manypkg/get-packages': ^2.1.0
       '@microsoft/api-documenter': ^7.17.9
       '@microsoft/api-extractor': ^7.22.2
       '@trivago/prettier-plugin-sort-imports': ^3.3.0
@@ -30,6 +31,7 @@ importers:
       '@commitlint/config-conventional': 17.2.0
       '@commitlint/cz-commitlint': 17.2.0_yes7iyjckc3rubj3ixzwc3ince
       '@fluidframework/test-tools': 0.2.3074
+      '@manypkg/get-packages': 2.1.0
       '@microsoft/api-documenter': 7.17.24
       '@microsoft/api-extractor': 7.27.1
       '@trivago/prettier-plugin-sort-imports': 3.3.0_prettier@2.6.2
@@ -1806,6 +1808,34 @@ packages:
     dependencies:
       npmlog: 6.0.2
       write-file-atomic: 4.0.2
+    dev: true
+
+  /@manypkg/find-root/2.1.0:
+    resolution: {integrity: sha512-NEYRVlZCJYhRTqQURhv+WBpDcvmsp/M423Wcdvggv8lYJYD4GtqnTMLrQaTjA10fYt/PIc3tSdwV+wxJnWqPfQ==}
+    engines: {node: '>=14.18.0'}
+    dependencies:
+      '@manypkg/tools': 1.0.0
+      '@types/node': 12.20.24
+      find-up: 4.1.0
+      fs-extra: 8.1.0
+    dev: true
+
+  /@manypkg/get-packages/2.1.0:
+    resolution: {integrity: sha512-IgWPEGgeKeR3ISlgHAMbY+m042yjNe3NPt8UmJT0xMwofe/UifUVtOq5aUBkNSygfOrcUh/j5JExLPuOx72quA==}
+    engines: {node: '>=14.18.0'}
+    dependencies:
+      '@manypkg/find-root': 2.1.0
+      '@manypkg/tools': 1.0.0
+    dev: true
+
+  /@manypkg/tools/1.0.0:
+    resolution: {integrity: sha512-W8uDMhDGtwNyXYr6A+MWggxdL3spOQ8rfMNYpNph1GDJ0v084MnBFdpF1jvcPZ0okHAeYccV7le8AUs+fzwsAQ==}
+    engines: {node: '>=14.18.0'}
+    dependencies:
+      fs-extra: 8.1.0
+      globby: 11.1.0
+      jju: 1.4.0
+      read-yaml-file: 1.1.0
     dev: true
 
   /@microsoft/api-documenter/7.17.24:
@@ -4390,6 +4420,7 @@ packages:
 
   /commander/2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
+    requiresBuild: true
 
   /commander/4.1.1:
     resolution: {integrity: sha512-NOKm8xhkzAjzFx8B2v5OAHT+u5pRQc2UCa2Vq9jYL/31o2wi9mxBA7LIFs3sV5VSC49z6pEhfbMULvShKj26WA==}
@@ -9798,6 +9829,16 @@ packages:
       normalize-package-data: 2.5.0
       parse-json: 5.2.0
       type-fest: 0.6.0
+
+  /read-yaml-file/1.1.0:
+    resolution: {integrity: sha512-VIMnQi/Z4HT2Fxuwg5KrY174U1VdUIASQVWXXyqtNRtxSr9IYkn1rsI6Tb6HsrHCmB7gVpNwX6JxPTHcH6IoTA==}
+    engines: {node: '>=6'}
+    dependencies:
+      graceful-fs: 4.2.10
+      js-yaml: 3.14.1
+      pify: 4.0.1
+      strip-bom: 3.0.0
+    dev: true
 
   /read/1.0.7:
     resolution: {integrity: sha512-rSOKNYUmaxy0om1BNjMN4ezNT6VKK+2xF4GBhc81mkH7L60i6dp8qPYrkndNLT3QPphoII3maL9PVC9XmhHwVQ==}
