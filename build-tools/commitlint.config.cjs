@@ -19,7 +19,11 @@ module.exports = {
 			"always",
 			["build", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test"],
 		],
-		"scope-enum": scopes,
+		"scope-enum": [
+			2,
+			"always",
+			scopes,
+		],
 	},
 	prompt: {
 		questions: {
