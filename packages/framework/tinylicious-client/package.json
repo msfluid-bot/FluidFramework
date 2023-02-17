@@ -81,12 +81,5 @@
 	},
 	"peerDependencies": {
 		"fluid-framework": ">=2.0.0-internal.2.1.0 <2.0.0-internal.3.0.0"
-	},
-	"typeValidation": {
-		"version": "2.0.0-internal.3.2.0",
-		"previousVersionStyle": "~previousMinor",
-		"baselineRange": ">=2.0.0-internal.3.1.0 <2.0.0-internal.3.2.0",
-		"baselineVersion": "2.0.0-internal.3.1.0",
-		"broken": {}
 	}
 }
