@@ -8,6 +8,10 @@
 		"url": "https://github.com/microsoft/FluidFramework.git",
 		"directory": "packages/framework/tinylicious-client"
 	},
+  "engines": {
+		"node": "^12.13.0",
+		"npm": "^5"
+	},
 	"license": "MIT",
 	"author": "Microsoft and contributors",
 	"sideEffects": false,
