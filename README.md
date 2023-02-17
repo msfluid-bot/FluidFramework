@@ -25,7 +25,7 @@ Output will look like this:
 **The mismatched node version is caught, but I expected the it to be group 3, but it's in the default group.** The
 relevant section of the syncpack config looks like this:
 
-```json
+```js
 customTypes: {
   enginesNpm: {
     path: "engines.npm",
@@ -91,7 +91,7 @@ same way.
 ## Issue 5
 
 Reset changes from issue 4 using `git reset --hard`, then run `syncpack set-semver-ranges --indent $'\t'` or `syncpack
-fix-mismatches --indent $'\t'` from the root of the repo. This works around issue 5; both commands seem to behave the
+fix-mismatches --indent $'\t'` from the root of the repo. This works around issue 4; both commands seem to behave the
 same way.
 
 Ignore changes in the `experimental` folder. Look at the changes in the fluid-framework and tinylicious-client packages.
